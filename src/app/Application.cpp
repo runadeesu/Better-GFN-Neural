@@ -3,6 +3,7 @@
 #include <dbt.h>
 #include <shellapi.h>
 
+#include <algorithm>
 #include <ctime>
 #include <format>
 #include <fstream>

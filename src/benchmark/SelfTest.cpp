@@ -1,5 +1,6 @@
 #include "benchmark/SelfTest.h"
 
+#include <algorithm>
 #include <cmath>
 #include <format>
 #include <random>
@@ -161,7 +162,9 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
     c.g = GpuContext{c.device.device(), c.device.context(), &c.shaders, &c.pass, gi.halfPrecision};
 
     // ---- NSR shader == trained network ------------------------------------
+    BGN_LOG_INFO("SelfTest", "device: {} (software {})", gi.name, gi.software);
     for (NsrModel m : {NsrModel::Small, NsrModel::Large}) {
+        BGN_LOG_INFO("SelfTest", "NSR {} vs CPU reference", m == NsrModel::Large ? "L" : "S");
         bool ok = false;
         nlohmann::json j = testNsr(c, m, ok);
         if (gi.halfPrecision) {
@@ -180,7 +183,8 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
     struct Geo {
         int inW, inH, outW, outH, streamH;
     };
-    std::vector<Geo> geos = gi.software || opt.quick ? std::vector<Geo>{{640, 360, 1280, 720, 0}, {960, 540, 960, 540, 0}, {640, 360, 1600, 900, 0}, {800, 450, 1280, 720, 0}, {1280, 720, 1280, 720, 360}}
+    // WARP (software) is ~100x slower than a GPU: use small frames there.
+    std::vector<Geo> geos = gi.software || opt.quick ? std::vector<Geo>{{320, 180, 640, 360, 0}, {480, 270, 480, 270, 0}, {320, 180, 800, 450, 0}, {400, 225, 640, 360, 0}, {640, 360, 640, 360, 180}}
                                                      : std::vector<Geo>{{1280, 720, 1920, 1080, 0}, {1920, 1080, 1920, 1080, 0}, {1920, 1080, 3840, 2160, 0}, {2560, 1440, 3840, 2160, 0}, {3840, 2160, 3840, 2160, 1080}};
     Pipeline pipeline;
     if (!pipeline.init(c.device, c.shaders)) {
@@ -195,6 +199,7 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
         scene.create(c.device.device(), geo.inW, geo.inH, DXGI_FORMAT_R8G8B8A8_UNORM, true);
         PipelineGeometry pg{geo.inW, geo.inH, geo.streamH ? geo.streamH * geo.inW / geo.inH : 0, geo.streamH, geo.outW, geo.outH};
         bool geoOk = pipeline.configure(pg);
+        BGN_LOG_INFO("SelfTest", "pipeline {}x{} -> {}x{} (stream {})", geo.inW, geo.inH, geo.outW, geo.outH, geo.streamH);
         nlohmann::json gj{{"input", std::format("{}x{}", geo.inW, geo.inH)}, {"output", std::format("{}x{}", geo.outW, geo.outH)}, {"stream_height", geo.streamH}};
         for (int tier = 0; tier < kTierCount && geoOk; ++tier) {
             for (int hdr = 0; hdr < 2; ++hdr) {
@@ -248,6 +253,7 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
                 mean /= std::max<size_t>(1, px.size() / 4 * 3);
                 const double maxAllowed = hdr ? 1000.0 / 80.0 + 0.1 : 1.01;
                 bool pass = ok && finite && w == geo.outW && h == geo.outH && mean > 0.02 && maxv <= maxAllowed;
+                BGN_LOG_INFO("SelfTest", "  tier {} hdr {}: {} mean {:.3f} max {:.3f} gpu {:.2f} ms", tier, hdr, pass ? "PASS" : "FAIL", mean, maxv, timed ? gpuMs / timed : -1.0);
                 allOk &= pass;
                 gj["tiers"].push_back({{"tier", tier},
                                        {"hdr_output", hdr == 1},
@@ -264,6 +270,7 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
     }
 
     // ---- Frame interpolation quality (optical flow vs. naive blend) ----------
+    BGN_LOG_INFO("SelfTest", "frame interpolation quality");
     {
         const int w = 640, h = 360;
         const float pan = 480.0f; // 8 px per frame at 60 fps
@@ -301,6 +308,7 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
     }
 
     // ---- Temporal anti-flicker ---------------------------------------------
+    BGN_LOG_INFO("SelfTest", "temporal stability");
     {
         const int w = 640, h = 360;
         GpuTexture scene;
@@ -334,6 +342,7 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
     }
 
     report["pass"] = allOk;
+    BGN_LOG_INFO("SelfTest", "self-test {}", allOk ? "PASSED" : "FAILED");
     out = report.dump(2);
     return allOk;
 }

@@ -40,6 +40,7 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
       - name: GPU self-test (WARP software GPU on the CI runner)
+        timeout-minutes: 25
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path test-results | Out-Null
@@ -48,6 +49,7 @@ jobs:
           if ($p.ExitCode -ne 0) { Write-Error "self-test failed ($($p.ExitCode))" }
 
       - name: Benchmark (WARP)
+        timeout-minutes: 15
         shell: pwsh
         run: |
           $p = Start-Process -FilePath build\bin\BetterGFNNeural.exe -ArgumentList @('--benchmark','--warp','--data-dir','build\bench','--output','test-results\benchmark.json') -Wait -PassThru
@@ -55,8 +57,15 @@ jobs:
           if ($p.ExitCode -ne 0) { Write-Error "benchmark failed ($($p.ExitCode))" }
 
       - name: Integration tests (fake GeForce NOW)
+        timeout-minutes: 15
         shell: pwsh
         run: ./tests/integration/run_integration.ps1 -Exe build\bin\BetterGFNNeural.exe -FakeGfn build\bin\FakeGfn.exe -OutDir test-results\integration
+
+      - name: Show logs
+        if: always()
+        shell: pwsh
+        run: |
+          Get-ChildItem build\selftest\logs, build\bench\logs -Filter *.log -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "==== $($_.FullName)"; Get-Content $_.FullName }
 
       - name: Install NSIS
         if: always()

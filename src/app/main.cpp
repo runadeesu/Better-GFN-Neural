@@ -66,12 +66,12 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
             BenchmarkOptions o;
             o.forceWarp = cmd.forceWarp;
             if (cmd.forceWarp) {
-                o.inW = 960;
-                o.inH = 540;
-                o.outW = 1920;
-                o.outH = 1080;
-                o.framesPerTier = 12;
-                o.warmupFrames = 3;
+                o.inW = 480;
+                o.inH = 270;
+                o.outW = 960;
+                o.outH = 540;
+                o.framesPerTier = 8;
+                o.warmupFrames = 2;
             }
             std::string err;
             BenchmarkResult r = runBenchmark(o, err);

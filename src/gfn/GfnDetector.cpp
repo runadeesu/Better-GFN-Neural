@@ -4,7 +4,9 @@
 #include <shellapi.h>
 #include <shlobj.h>
 
+#include <algorithm>
 #include <filesystem>
+#include <iterator>
 
 #include "core/Log.h"
 #include "core/StringUtil.h"
