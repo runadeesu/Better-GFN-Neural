@@ -70,7 +70,7 @@ void main(uint3 id : SV_DispatchThreadID) {
     } else {
         // Candidates: coarse vector (3 nearest coarse cells), zero, previous frame's flow.
         int2 cgrid = int2(gPassF.yz);
-        int2 cc = cell / 2;
+        int2 cc = int2(uint2(cell) >> 1);
         int2 side = int2((cell.x & 1) ? 1 : -1, (cell.y & 1) ? 1 : -1);
         float2 cand[5];
         cand[0] = gCoarse.Load(int3(clampCoord(cc, cgrid), 0)).xy;

@@ -51,9 +51,9 @@ void main(uint3 id : SV_DispatchThreadID) {
         c = lerp(c * 0.35, float3(1, 1, 1), g);
     }
     // Simulated 8x8 block quantization (cloud stream artifacts)
-    int2 blk = p / 8;
+    uint2 blk = uint2(p) / 8u;
     float q = 1.0 / 48.0;
-    float3 blockBias = (float3(hashFloat(uint2(blk), uint(t * 60.0)), hashFloat(uint2(blk) + 3u, 1), hashFloat(uint2(blk) + 9u, 2)) - 0.5) * q;
+    float3 blockBias = (float3(hashFloat(blk, uint(t * 60.0)), hashFloat(blk + 3u, 1), hashFloat(blk + 9u, 2)) - 0.5) * q;
     c = floor(saturate(c + blockBias) * 255.0 + 0.5) / 255.0;
     gOutTex[p] = float4(c, 1.0);
 }

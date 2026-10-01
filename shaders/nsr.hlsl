@@ -117,7 +117,7 @@ void main(uint3 id : SV_DispatchThreadID) {
     nfloat4 acc[OUT_G];
     [unroll] for (int g = 0; g < OUT_G; ++g) acc[g] = (nfloat4)NSR_B[g];
     [unroll] for (int t = 0; t < 9; ++t) {
-        int2 q = clampCoord(p + int2(t % 3 - 1, t / 3 - 1), size);
+        int2 q = clampCoord(p + int2(int(uint(t) % 3u) - 1, int(uint(t) / 3u) - 1), size);
         [unroll] for (int k = 0; k < NSR_G; ++k) {
             nfloat4 v = loadAct(k, q);
             [unroll] for (int g2 = 0; g2 < OUT_G; ++g2) acc[g2] += mul(v, (nfloat4x4)NSR_W[(g2 * 9 + t) * NSR_G + k]);

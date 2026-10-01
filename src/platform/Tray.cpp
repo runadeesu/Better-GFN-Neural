@@ -17,7 +17,7 @@ namespace {
 constexpr UINT kTrayId = 1;
 
 // Draws an anti-aliased state icon: dark rounded tile + colored ring + core.
-HICON makeIcon(int size, COLORREF color, bool hollow) {
+HICON makeIcon(int size, COLORREF tint, bool hollow) {
     BITMAPV5HEADER bi{};
     bi.bV5Size = sizeof(bi);
     bi.bV5Width = size;
@@ -31,11 +31,11 @@ HICON makeIcon(int size, COLORREF color, bool hollow) {
     bi.bV5AlphaMask = 0xFF000000;
     void* bits = nullptr;
     HDC dc = GetDC(nullptr);
-    HBITMAP color = CreateDIBSection(dc, reinterpret_cast<BITMAPINFO*>(&bi), DIB_RGB_COLORS, &bits, nullptr, 0);
+    HBITMAP colorBmp = CreateDIBSection(dc, reinterpret_cast<BITMAPINFO*>(&bi), DIB_RGB_COLORS, &bits, nullptr, 0);
     ReleaseDC(nullptr, dc);
-    if (!color) return nullptr;
+    if (!colorBmp) return nullptr;
     auto* px = static_cast<uint32_t*>(bits);
-    const float cr = GetRValue(color) / 255.0f, cg = GetGValue(color) / 255.0f, cb = GetBValue(color) / 255.0f;
+    const float cr = GetRValue(tint) / 255.0f, cg = GetGValue(tint) / 255.0f, cb = GetBValue(tint) / 255.0f;
     const float c = (size - 1) * 0.5f;
     const float rTile = size * 0.5f, rRing = size * 0.36f, ringW = std::max(1.5f, size * 0.10f), rCore = size * 0.17f;
     for (int y = 0; y < size; ++y)
@@ -64,10 +64,10 @@ HICON makeIcon(int size, COLORREF color, bool hollow) {
     HBITMAP mask = CreateBitmap(size, size, 1, 1, nullptr);
     ICONINFO ii{};
     ii.fIcon = TRUE;
-    ii.hbmColor = color;
+    ii.hbmColor = colorBmp;
     ii.hbmMask = mask;
     HICON icon = CreateIconIndirect(&ii);
-    DeleteObject(color);
+    DeleteObject(colorBmp);
     DeleteObject(mask);
     return icon;
 }

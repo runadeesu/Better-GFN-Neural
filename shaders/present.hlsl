@@ -17,12 +17,13 @@ VsOut vsMain(uint vid : SV_VertexID) {
 }
 
 float3 workingToOutput(float3 c) {
+    float3 o = saturate(c);
     if (gFrame.z == BGN_OUTPUT_SCRGB) {
-        if (gFrame.y == BGN_INPUT_SCRGB) return pqDecode(saturate(c)) * (10000.0 / 80.0);
-        return srgbToLinear(saturate(c)) * (gHdr.x / 80.0);
+        o = (gFrame.y == BGN_INPUT_SCRGB) ? pqDecode(saturate(c)) * (10000.0 / 80.0) : srgbToLinear(saturate(c)) * (gHdr.x / 80.0);
+    } else if (gFrame.y == BGN_INPUT_SCRGB) {
+        o = linearToSrgb(saturate(pqDecode(saturate(c)) * (10000.0 / 200.0)));
     }
-    if (gFrame.y == BGN_INPUT_SCRGB) return linearToSrgb(saturate(pqDecode(saturate(c)) * (10000.0 / 200.0)));
-    return saturate(c);
+    return o;
 }
 
 float4 psMain(VsOut i) : SV_Target {
