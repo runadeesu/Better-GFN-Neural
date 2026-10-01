@@ -1,0 +1,90 @@
+name: build-test-package
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  portable-core:
+    name: Portable core (Linux) - unit tests + NSR trainer build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+      - name: Build NSR trainer
+        run: g++ -std=c++17 -O2 -pthread -Ithird_party/stb tools/nsr_trainer/nsr_trainer.cpp -o build/nsr_trainer
+
+  windows:
+    name: Windows x64 - build, test, package
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: GPU self-test (WARP software GPU on the CI runner)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path test-results | Out-Null
+          $p = Start-Process -FilePath build\bin\BetterGFNNeural.exe -ArgumentList @('--selftest','--warp','--data-dir','build\selftest','--output','test-results\selftest.json') -Wait -PassThru
+          Get-Content test-results\selftest.json
+          if ($p.ExitCode -ne 0) { Write-Error "self-test failed ($($p.ExitCode))" }
+
+      - name: Benchmark (WARP)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath build\bin\BetterGFNNeural.exe -ArgumentList @('--benchmark','--warp','--data-dir','build\bench','--output','test-results\benchmark.json') -Wait -PassThru
+          Get-Content test-results\benchmark.json
+          if ($p.ExitCode -ne 0) { Write-Error "benchmark failed ($($p.ExitCode))" }
+
+      - name: Integration tests (fake GeForce NOW)
+        shell: pwsh
+        run: ./tests/integration/run_integration.ps1 -Exe build\bin\BetterGFNNeural.exe -FakeGfn build\bin\FakeGfn.exe -OutDir test-results\integration
+
+      - name: Install NSIS
+        if: always()
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "C:\Program Files (x86)\NSIS\makensis.exe")) { choco install nsis -y --no-progress }
+
+      - name: Package (exe, portable zip, installer)
+        if: always()
+        shell: pwsh
+        run: ./packaging/package.ps1 -BuildDir build -Version 1.0.0
+
+      - name: Upload release artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BetterGFNNeural-1.0.0-windows-x64
+          path: |
+            dist/BetterGFNNeural.exe
+            dist/BetterGFNNeuralSetup.exe
+            dist/BetterGFNNeural-1.0.0-portable.zip
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-results/
+            build/selftest/logs/
+            build/bench/logs/
