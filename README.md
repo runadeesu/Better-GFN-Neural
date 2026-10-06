@@ -25,15 +25,18 @@
 
 キーボードショートカットは一切不要です。設定はすべて GUI から変更でき、通常は **Auto（オートモード）** のままで最適な設定が自動選択されます。マウス・キーボード・コントローラー入力はそのまま GeForce NOW に届きます（出力ウィンドウはクリック透過・非アクティブ化）。
 
-<p align="center"><img src="docs/images/ui_home.png" width="720" alt="ホーム画面"></p>
+<p align="center"><img src="docs/images/ui_home_ja_en.png" width="720" alt="ホーム画面（日本語 + English 併記）"></p>
+
+UI は **日本語 / English / 日本語 + English（併記）** の 3 モード。画面右上のボタンでいつでも切り替えられます（初期値は自動：日本語版 Windows なら併記、それ以外は English）。
 
 <details><summary>その他の画面（CI の統合テストで自動撮影）</summary>
 
 | | |
 |---|---|
-| <img src="docs/images/ui_enhancement.png" width="420" alt="画質強化"> | <img src="docs/images/ui_performance.png" width="420" alt="パフォーマンス"> |
-| <img src="docs/images/ui_display.png" width="420" alt="ディスプレイ"> | <img src="docs/images/ui_games.png" width="420" alt="ゲームプロファイル"> |
-| <img src="docs/images/ui_benchmark.png" width="420" alt="ベンチマーク"> | <img src="docs/images/ui_first_run.png" width="420" alt="初回セットアップ"> |
+| <img src="docs/images/ui_enhancement_ja.png" width="420" alt="画質強化"> | <img src="docs/images/ui_performance_ja.png" width="420" alt="パフォーマンス"> |
+| <img src="docs/images/ui_display_ja.png" width="420" alt="ディスプレイ"> | <img src="docs/images/ui_games_ja.png" width="420" alt="ゲームプロファイル"> |
+| <img src="docs/images/ui_benchmark_ja.png" width="420" alt="ベンチマーク"> | <img src="docs/images/ui_first_run_ja.png" width="420" alt="初回セットアップ"> |
+| <img src="docs/images/ui_settings_ja_en.png" width="420" alt="設定（併記）"> | <img src="docs/images/ui_home.png" width="420" alt="Home (English)"> |
 
 </details>
 

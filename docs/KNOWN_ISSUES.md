@@ -44,6 +44,12 @@
   (`WDA_EXCLUDEFROMCAPTURE`, needed to avoid feedback).
 * **HDR capture of SDR content** is captured as 8-bit; HDR streams are captured in
   FP16 only while Windows HDR is enabled on that monitor.
+* **UI language.** Japanese, English and Japanese + English are complete for all
+  built-in texts. Messages that come verbatim from Windows (e.g. the text of a
+  capture error returned by the OS) stay in the language Windows provides; the
+  part written by the app is translated. Log files are always English so they can
+  be shared for troubleshooting. Japanese line breaking follows basic kinsoku rules
+  (no closing punctuation or small kana at a line start), not the full JIS X 4051.
 
 ## Verification limits of this release
 

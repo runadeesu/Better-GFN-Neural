@@ -15,8 +15,8 @@ GPU 処理は Direct3D 11 のソフトウェアラスタライザ (WARP) 上で�
 
 | | |
 |---|---|
-| CI run | `build-test-package` run **#5** ([37393385616](https://github.com/runadeesu/Better-GFN-Neural/actions/runs/37393385616)), commit `ef529f2` |
-| Windows job | `windows-latest` (Windows Server 2025), Visual Studio 2026 / MSVC 14.5x, Windows SDK 10.0.26100, Ninja, Release, static CRT |
+| CI run | `build-test-package` run **#13** ([37399645118](https://github.com/runadeesu/Better-GFN-Neural/actions/runs/37399645118)), commit `ec78287` (later commits on the branch change documentation only) |
+| Windows job | `windows-latest` GitHub-hosted runner, Visual Studio 2026 (MSVC 14.51), Windows SDK 10.0.26100, Ninja, Release, static CRT |
 | VS 2022 job | `windows-2022`, "Visual Studio 17 2022" generator — compatibility build |
 | Linux job | `ubuntu-latest`, GCC — portable core unit tests + NSR trainer build |
 | GPU in CI | none — **Microsoft Basic Render Driver (WARP)**, feature level 12_1 exposed as D3D11, FP32 only (no FP16 shader path) |
@@ -30,10 +30,10 @@ GPU 処理は Direct3D 11 のソフトウェアラスタライザ (WARP) 上で�
 | Build — Windows x64 (VS 2022 generator) | ✅ |
 | Build — Linux portable core + NSR trainer | ✅ |
 | HLSL shaders (fxc, 36 shaders, `/O3`) | ✅ compiled at build time; all 36 created on the device |
-| Unit tests (`bgn_unit_tests`) | ✅ 27 / 27 on Windows and Linux (28 after the log-file test added later) |
+| Unit tests (`bgn_unit_tests`, 31 test cases) | ✅ 31 / 31 on Windows and Linux |
 | GPU self-test (`--selftest --warp`) | ✅ all checks pass (details below) |
 | Benchmark (`--benchmark --warp`) | ✅ completes, writes recommendation |
-| Integration tests (real exe vs. fake GeForce NOW) | ✅ 20 / 20 checks |
+| Integration tests (real exe vs. fake GeForce NOW) | ✅ 21 / 21 checks |
 | Packaging | ✅ `BetterGFNNeural.exe`, `BetterGFNNeuralSetup.exe`, portable ZIP, `SHA256SUMS.txt` |
 
 ## GPU self-test (WARP)
@@ -78,11 +78,11 @@ real GPU; they only show relative cost).
 
 | Input → output | Upscalers exercised | GPU ms, tiers 0…6 in order (extra HDR pass at tier 4) | Result |
 |---|---|---|---|
-| 320×180 → 640×360 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 59, 49, 56, 63, 57, 56 (HDR), 96, 95 | ✅ PASS |
-| 480×270 → 480×270 | Native (no upscaling) | 40, 50, 55, 58, 60, 57 (HDR), 89, 90 | ✅ PASS |
-| 320×180 → 800×450 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 51, 78, 61, 75, 75, 78 (HDR), 119, 119 | ✅ PASS |
-| 400×225 → 640×360 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 42, 53, 62, 126, 123, 124 (HDR), 185, 190 | ✅ PASS |
-| 640×360 → 640×360 (stream 180p inside) | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 61, 68, 126, 75, 75, 77 (HDR), 118, 114 | ✅ PASS |
+| 320×180 → 640×360 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 58, 45, 47, 51, 51, 56 (HDR), 93, 95 | ✅ PASS |
+| 480×270 → 480×270 | Native (no upscaling) | 32, 60, 53, 56, 56, 61 (HDR), 90, 86 | ✅ PASS |
+| 320×180 → 800×450 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 55, 80, 62, 76, 75, 78 (HDR), 119, 115 | ✅ PASS |
+| 400×225 → 640×360 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 45, 53, 57, 123, 121, 124 (HDR), 185, 186 | ✅ PASS |
+| 640×360 → 640×360 (stream 180p inside) | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 61, 71, 131, 80, 82, 81 (HDR), 115, 119 | ✅ PASS |
 
 ## Benchmark (WARP)
 
@@ -90,15 +90,15 @@ Input 480×270 → output 960×540, 8 measured frames per tier after 2 warm-up f
 
 | Tier | Avg ms | Max ms |
 |---|---|---|
-| 0 Minimal | 101.4 | 182.7 |
-| 1 Light | 85.2 | 95.8 |
-| 2 Performance | 90.9 | 100.0 |
-| 3 Balanced Lite | 101.3 | 112.6 |
-| 4 Balanced | 105.4 | 128.9 |
-| 5 Quality | 188.4 | 196.6 |
-| 6 Ultra | 223.1 | 317.2 |
+| 0 Minimal | 105.0 | 198.6 |
+| 1 Light | 84.4 | 93.5 |
+| 2 Performance | 90.0 | 97.4 |
+| 3 Balanced Lite | 97.0 | 97.6 |
+| 4 Balanced | 99.8 | 104.8 |
+| 5 Quality | 191.1 | 198.2 |
+| 6 Ultra | 216.4 | 308.2 |
 
-Frame interpolation pass: 16.3 ms. Recommendation on WARP: preset **Performance**,
+Frame interpolation pass: 16.2 ms. Recommendation on WARP: preset **Performance**,
 frame interpolation **Off** (expected — a software renderer cannot hold any tier
 inside a 60 fps budget, so the lowest tier is recommended; on real GPUs the same code
 recommends higher tiers).
@@ -115,13 +115,13 @@ fullscreen, windowed, minimize/restore, exit, restart).
 | `app_exit_code` | ✅ PASS | exit code 0 |
 | `report_written` | ✅ PASS | test-results\integration\detect.json |
 | `initial_waiting` | ✅ PASS | first samples: Waiting,Waiting,Waiting,Waiting |
-| `launcher_connected` | ✅ PASS | Connected samples: 28 |
-| `game_detected_cyberpunk` | ✅ PASS | samples: 69 |
-| `game_switch_fortnite` | ✅ PASS | samples: 21 |
+| `launcher_connected` | ✅ PASS | Connected samples: 29 |
+| `game_detected_cyberpunk` | ✅ PASS | samples: 71 |
+| `game_switch_fortnite` | ✅ PASS | samples: 20 |
 | `gfn_exit_waiting` | ✅ PASS | states 42-44.5s: Waiting,Waiting,Waiting,Waiting,Waiting,Waiting,Waiting,Waiting,Waiting |
-| `gfn_restart_reconnect` | ✅ PASS | samples: 35 |
+| `gfn_restart_reconnect` | ✅ PASS | samples: 34 |
 | `profiles_created` | ✅ PASS | profiles: apexlegends,cyberpunk2077,fortnite |
-| `capture_info` | ✅ PASS | max captured=166 presented=166 backends=Windows Graphics Capture capture sizes=960x540,961x541,1028x749,1024x768,1028x720 errors= |
+| `capture_info` | ✅ PASS | max captured=163 presented=163 backends=Windows Graphics Capture capture sizes=960x540,1028x749,1024x768,1028x720 errors= |
 | `settings_saved` | ✅ PASS | settings.json |
 | `log_written` | ✅ PASS | logs folder |
 | `log_privacy` | ✅ PASS | user name not present in logs |
@@ -131,7 +131,8 @@ fullscreen, windowed, minimize/restore, exit, restart).
 | `corrupt_settings_survived` | ✅ PASS | exit code 0 |
 | `corrupt_settings_rewritten` | ✅ PASS | settings.json valid again |
 | `corrupt_settings_kept_for_diagnostics` | ✅ PASS | settings.json.corrupt |
-| `ui_screenshots` | ✅ PASS | png files: 8 |
+| `ui_screenshots` | ✅ PASS | png files: 24 (English, Japanese, Japanese + English) |
+| `ui_screenshots_japanese` | ✅ PASS | Japanese png files: 8 |
 
 The capture line shows that **Windows Graphics Capture really captured and the overlay
 really presented** the fake GFN window on the runner (`captured = presented`), across
@@ -139,21 +140,24 @@ window resizes and fullscreen.
 
 ### UI screenshots
 
-Captured by the integration test (`--automation screenshots`) at 1440×900, 100 % DPI:
-Home, Enhancement, Display, Games, Performance, Benchmark, Settings and the first-run
-wizard. They are part of the `test-results` artifact and copied to
-[`docs/images/`](images/).
+Captured by the integration test (`--automation screenshots`) at 1440×900, 100 % DPI,
+for every page (Home, Enhancement, Display, Games, Performance, Benchmark, Settings,
+first-run wizard) in **English**, **日本語** and **日本語 + English** — 24 images in the
+`test-results` artifact, a selection in [`docs/images/`](images/). Japanese text is
+rendered with the Windows Japanese UI font (Yu Gothic / Meiryo) merged into the UI font.
 
-<img src="images/ui_home.png" width="640" alt="Home">
+| 日本語 + English | 日本語 | English |
+|---|---|---|
+| <img src="images/ui_home_ja_en.png" width="300" alt="Home (bilingual)"> | <img src="images/ui_home_ja.png" width="300" alt="Home (Japanese)"> | <img src="images/ui_home.png" width="300" alt="Home (English)"> |
 
 ## Packages
 
-| File | Description |
-|---|---|
-| `BetterGFNNeural.exe` | stand-alone executable (static CRT) |
-| `BetterGFNNeuralSetup.exe` | NSIS installer, per-user, no admin rights |
-| `BetterGFNNeural-1.0.0-portable.zip` | portable build (`portable.dat`: settings and logs next to the exe) |
-| `SHA256SUMS.txt` | checksums |
+| File | Size | SHA-256 | Description |
+|---|---|---|---|
+| `BetterGFNNeural.exe` | 2,371,584 bytes | `757a51d5dafaf25b…` | stand-alone executable (x64, static CRT) |
+| `BetterGFNNeuralSetup.exe` | 1,561,015 bytes | `d861f2ad37d12aab…` | NSIS installer, per-user, no admin rights |
+| `BetterGFNNeural-1.0.0-portable.zip` | 1,918,853 bytes | `2acf38ef5ef06402…` | portable build (`portable.dat`: settings and logs next to the exe) |
+| `SHA256SUMS.txt` | 281 bytes | — | checksums of the files above |
 
 The exe is a 64-bit GUI binary that imports only Windows system DLLs (no Visual C++
 runtime needed). The installer is **not code-signed** (SmartScreen may warn).
