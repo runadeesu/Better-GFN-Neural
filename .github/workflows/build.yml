@@ -2,6 +2,8 @@ name: build-test-package
 
 on:
   push:
+    branches: ["**"]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -40,6 +42,8 @@ jobs:
   windows:
     name: Windows x64 - build, test, package
     runs-on: windows-latest
+    permissions:
+      contents: write   # draft release on v* tags only
     steps:
       - uses: actions/checkout@v6
 
@@ -104,6 +108,22 @@ jobs:
             dist/BetterGFNNeural.exe
             dist/BetterGFNNeuralSetup.exe
             dist/BetterGFNNeural-1.0.0-portable.zip
+            dist/SHA256SUMS.txt
+
+      # Only when a version tag (v*) is pushed: attach the packages to a draft
+      # GitHub Release so they do not expire like workflow artifacts.
+      - name: Draft GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: Better GFN Neural ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          files: |
+            dist/BetterGFNNeural.exe
+            dist/BetterGFNNeuralSetup.exe
+            dist/BetterGFNNeural-1.0.0-portable.zip
+            dist/SHA256SUMS.txt
 
       - name: Upload test results
         if: always()

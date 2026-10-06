@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 — 2026-10-02
+## 1.0.0 — 2026-10-06
 
 First public release of Better GFN Neural, an unofficial GeForce NOW companion
 that enhances the GeForce NOW picture locally on the GPU.
@@ -32,4 +32,5 @@ that enhances the GeForce NOW picture locally on the GPU.
 - Robustness: device-loss recovery, capture reconnection, display/sleep handling,
   crash minidumps, safe mode, crash-safe settings with backup.
 - Headless `--selftest` and `--benchmark`, integration tests with a scripted fake
-  GeForce NOW window, CI packaging of EXE, installer and portable ZIP.
+  GeForce NOW window, CI packaging of EXE, installer, portable ZIP and
+  SHA-256 checksums; draft GitHub Release on version tags.

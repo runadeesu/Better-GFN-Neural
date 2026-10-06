@@ -52,6 +52,9 @@ GitHub Actions（`build-test-package`）が毎回ビルド・テスト・パッ�
 * `BetterGFNNeural.exe` — 単体実行ファイル（静的 CRT、追加ランタイム不要）
 * `BetterGFNNeuralSetup.exe` — インストーラー（ユーザー単位・管理者権限不要、スタートメニュー/デスクトップのショートカット、アンインストーラー）
 * `BetterGFNNeural-1.0.0-portable.zip` — ポータブル版（設定とログを exe と同じフォルダに保存）
+* `SHA256SUMS.txt` — 上記ファイルのチェックサム
+
+Actions の成果物は一定期間で期限切れになります。`v1.0.0` のようなタグを push すると、同じファイルを添付した **下書きの GitHub Release** が自動作成されます（公開はリポジトリ所有者が手動で行います）。インストーラーはコード署名されていないため、初回起動時に SmartScreen の警告が出ることがあります。
 
 ## 動作要件
 
