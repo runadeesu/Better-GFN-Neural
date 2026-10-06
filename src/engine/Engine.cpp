@@ -412,14 +412,15 @@ void Engine::loopOnce(Session& s) {
             s.policy.startTier = std::min(s.policy.startTier, s.policy.maxTier);
         }
         int initial = cfg.initialTier;
-        if (cfg.preset != Preset::Auto) initial = s.policy.startTier;
+        if (cfg.preset != Preset::Auto && !cfg.initialTierLearned) initial = s.policy.startTier;
         if (initial < 0) initial = estimateTierForGpu(s.device.info().vendorId, s.device.info().name, s.device.info().dedicatedVramMB / 1024.0);
         initial = std::clamp(initial, s.policy.minTier, s.policy.maxTier);
         FrameGenMode fg = (cfg.safeMode || s.batteryCap < kMaxTier) ? FrameGenMode::Off : cfg.enhancement.frameGen;
         s.automode.configure(s.policy, fg, cfg.autoMode, initial);
         if (!cfg.autoMode) s.automode.setFixedTier(initial);
         s.autoReason = cfg.autoMode ? "Auto Mode active" : "Fixed quality (Auto Mode off)";
-        BGN_LOG_INFO("Engine", "config: preset {}, auto {}, start tier {}, frame interpolation {}", toString(cfg.preset), cfg.autoMode, initial, toString(fg));
+        BGN_LOG_INFO("Engine", "config: preset {}, auto {}, start tier {}{}, frame interpolation {}", toString(cfg.preset), cfg.autoMode, initial,
+                     cfg.initialTierLearned ? " (learned)" : "", toString(fg));
     }
 
     // ---- Monitor -------------------------------------------------------------

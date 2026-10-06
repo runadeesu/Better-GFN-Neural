@@ -120,6 +120,10 @@ struct GameProfile {
     EnhancementSettings enhancement;
     int64_t lastPlayedUnix = 0;
     int64_t sessions = 0;
+    // Learned by "Omakase": the quality tier this game settled at on this PC,
+    // used as the starting tier next time (no ramp-up). -1 = not learned yet.
+    int learnedTier = -1;
+    std::string learnedGpu;   // GPU the tier was learned on
 };
 
 struct BenchmarkResult {
@@ -145,6 +149,10 @@ struct Settings {
 
     // Core behaviour
     bool enhancementEnabled = true; // master switch (tray "Pause")
+    // "Omakase" (fully automatic): every picture/performance decision is made
+    // from the game type, the PC and what was learned in earlier sessions. The
+    // manual settings below are kept but ignored while this is on.
+    bool omakase = true;
     bool autoMode = true;
     Preset preset = Preset::Auto;
     bool lowLatency = true;

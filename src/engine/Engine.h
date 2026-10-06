@@ -53,6 +53,7 @@ struct EngineConfig {
     OsdSettings osd;
     PowerSettings power;
     int initialTier = -1; // -1 = derive from GPU / benchmark
+    bool initialTierLearned = false; // Omakase: the tier this game settled at last time (kept for every preset)
     bool forceWarp = false;
     bool safeMode = false;
     uint64_t revision = 0; // increments on every change

@@ -7,6 +7,7 @@
 
 #include "engine/Engine.h"
 #include "gfn/GfnDetector.h"
+#include "profiles/Omakase.h"
 #include "platform/Controllers.h"
 #include "platform/Display.h"
 #include "platform/SystemMonitor.h"
@@ -46,6 +47,10 @@ struct UiModel {
     std::vector<SessionRecord> history; // oldest first
     std::string historyExport;          // path of the last CSV export
     std::string lastExport;             // path of the last settings backup / diagnostics report
+    // Omakase: what the automatic mode decided for the current game
+    GameKind omakaseKind = GameKind::General;
+    bool omakaseLearned = false;        // starting tier learned from earlier sessions
+    int omakaseLearnedTier = -1;
 };
 
 struct UiActions {

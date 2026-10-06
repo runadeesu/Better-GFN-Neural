@@ -2,6 +2,7 @@
 
 #include "core/StringUtil.h"
 #include "profiles/GameTitle.h"
+#include "profiles/Omakase.h"
 
 namespace bgn {
 
@@ -10,65 +11,20 @@ namespace {
 struct Template {
     const char* key;
     const char* name;
-    void (*apply)(GameProfile&);
+    GameKind kind;
 };
 
-void competitiveShooter(GameProfile& p) {
-    p.preset = Preset::LowLatency;
-    p.priority = PerformancePriority::Latency;
-    auto& e = p.enhancement;
-    e.frameGen = FrameGenMode::Off;          // never add hold-back latency in competitive games
-    e.temporal = {true, false, 0.3f};        // light temporal => minimal ghosting on fast flicks
-    e.sharpen = {true, false, 0.6f};         // target / HUD clarity
-    e.deblur = {true, false, 0.5f};
-    e.textBoost = true;
-    e.color.vibrance = 0.2f;
-    e.color.shadowDetail = 0.35f;            // see into dark corners without crushing
-}
-
-void cinematic(GameProfile& p) {
-    p.preset = Preset::Quality;
-    p.priority = PerformancePriority::Quality;
-    auto& e = p.enhancement;
-    e.frameGen = FrameGenMode::Auto;
-    e.temporal = {true, false, 0.6f};
-    e.sharpen = {true, false, 0.45f};
-    e.color.localContrast = 0.3f;
-    e.color.highlightRecovery = 0.4f;
-}
-
-void racing(GameProfile& p) {
-    p.preset = Preset::Quality;
-    p.priority = PerformancePriority::Balanced;
-    auto& e = p.enhancement;
-    e.frameGen = FrameGenMode::Auto;          // smooth camera motion benefits most
-    e.deblur = {true, false, 0.6f};
-    e.motionDeblur = true;
-    e.sharpen = {true, false, 0.5f};
-    e.color.vibrance = 0.25f;
-}
-
-void blocky(GameProfile& p) {
-    p.preset = Preset::Balanced;
-    auto& e = p.enhancement;
-    e.frameGen = FrameGenMode::Auto;
-    e.sharpen = {true, false, 0.3f};          // pixel-art textures: avoid halos
-    e.temporal = {true, false, 0.55f};        // stabilises foliage shimmer
-    e.denoise = {true, false, 0.25f};
-    e.deblock = {true, false, 0.35f};
-}
-
 const Template kTemplates[] = {
-    {"cyberpunk2077", "Cyberpunk 2077", cinematic},
-    {"fortnite", "Fortnite", competitiveShooter},
-    {"forzahorizon", "Forza Horizon", racing},
-    {"callofduty", "Call of Duty", competitiveShooter},
-    {"minecraft", "Minecraft", blocky},
-    {"apexlegends", "Apex Legends", competitiveShooter},
-    {"counterstrike", "Counter-Strike", competitiveShooter},
-    {"baldursgate3", "Baldur's Gate 3", cinematic},
-    {"thewitcher3", "The Witcher 3", cinematic},
-    {"rocketleague", "Rocket League", racing},
+    {"cyberpunk2077", "Cyberpunk 2077", GameKind::Cinematic},
+    {"fortnite", "Fortnite", GameKind::Competitive},
+    {"forzahorizon", "Forza Horizon", GameKind::Racing},
+    {"callofduty", "Call of Duty", GameKind::Competitive},
+    {"minecraft", "Minecraft", GameKind::Blocky},
+    {"apexlegends", "Apex Legends", GameKind::Competitive},
+    {"counterstrike", "Counter-Strike", GameKind::Competitive},
+    {"baldursgate3", "Baldur's Gate 3", GameKind::Cinematic},
+    {"thewitcher3", "The Witcher 3", GameKind::Cinematic},
+    {"rocketleague", "Rocket League", GameKind::Racing},
 };
 
 const Template* findTemplate(const std::string& key) {
@@ -86,7 +42,7 @@ std::optional<GameProfile> ProfileManager::builtinTemplate(const std::string& ke
     p.key = t->key;
     p.displayName = displayName.empty() ? t->name : displayName;
     p.builtin = true;
-    t->apply(p);
+    applyGameKind(t->kind, p);
     return p;
 }
 

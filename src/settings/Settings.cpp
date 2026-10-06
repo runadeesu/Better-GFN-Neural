@@ -265,7 +265,9 @@ static json toJson(const GameProfile& p) {
                 {"performance", p.priority},
                 {"enhancement", toJson(p.enhancement)},
                 {"last_played", p.lastPlayedUnix},
-                {"sessions", p.sessions}};
+                {"sessions", p.sessions},
+                {"learned_tier", p.learnedTier},
+                {"learned_gpu", p.learnedGpu}};
 }
 static void fromJson(const json& j, GameProfile& p) {
     if (!j.is_object()) return;
@@ -278,6 +280,8 @@ static void fromJson(const json& j, GameProfile& p) {
     if (j.contains("enhancement")) fromJson(j["enhancement"], p.enhancement);
     getOpt(j, "last_played", p.lastPlayedUnix);
     getOpt(j, "sessions", p.sessions);
+    getOpt(j, "learned_tier", p.learnedTier);
+    getOpt(j, "learned_gpu", p.learnedGpu);
 }
 
 static json toJson(const BenchmarkResult& b) {
@@ -339,6 +343,7 @@ std::string settingsToJson(const Settings& s) {
     for (const auto& [name, e] : s.userPresets) presets[name] = toJson(e);
     json j{{"schema_version", s.schemaVersion},
            {"enhancement_enabled", s.enhancementEnabled},
+           {"omakase", s.omakase},
            {"auto_mode", s.autoMode},
            {"preset", s.preset},
            {"low_latency", s.lowLatency},
@@ -392,6 +397,7 @@ bool settingsFromJson(const std::string& text, Settings& out, std::string* error
     Settings s;
     getOpt(j, "schema_version", s.schemaVersion);
     getOpt(j, "enhancement_enabled", s.enhancementEnabled);
+    getOpt(j, "omakase", s.omakase);
     getOpt(j, "auto_mode", s.autoMode);
     getOpt(j, "preset", s.preset);
     getOpt(j, "low_latency", s.lowLatency);
@@ -497,7 +503,13 @@ static bool sanitizeEnhancement(EnhancementSettings& e) {
 
 bool Settings::sanitize() {
     bool changed = sanitizeEnhancement(enhancement);
-    for (auto& [key, p] : profiles) changed |= sanitizeEnhancement(p.enhancement);
+    for (auto& [key, p] : profiles) {
+        changed |= sanitizeEnhancement(p.enhancement);
+        if (p.learnedTier < -1 || p.learnedTier > 6) {
+            p.learnedTier = -1;
+            changed = true;
+        }
+    }
     for (auto& [name, e] : userPresets) changed |= sanitizeEnhancement(e);
     while (userPresets.size() > 50) {
         userPresets.erase(std::prev(userPresets.end()));

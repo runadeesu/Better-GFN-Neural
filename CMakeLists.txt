@@ -36,6 +36,7 @@ add_library(bgn_portable STATIC
     src/settings/Presets.cpp
     src/profiles/GameTitle.cpp
     src/profiles/ProfileManager.cpp
+    src/profiles/Omakase.cpp
     src/gfn/GfnClassifier.cpp
     src/automode/AutoModeController.cpp
     src/filters/ContentResolution.cpp

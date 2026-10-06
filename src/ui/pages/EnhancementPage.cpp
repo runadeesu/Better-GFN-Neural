@@ -147,6 +147,8 @@ bool drawEnhancementEditor(EnhancementSettings& e, const char* scope) {
 void drawEnhancementPage(PageContext& c) {
     Settings& s = c.settings;
     const float sc = ImGui::GetStyle().FontScaleDpi;
+    const bool omakase = omakaseBanner(c);
+    ImGui::BeginDisabled(omakase);
     beginCard("enhHeader", ImVec2(ImGui::GetContentRegionAvail().x, 0));
     sectionTitle(tr("Enhancement"), tr("Editing global settings"));
     {
@@ -219,6 +221,7 @@ void drawEnhancementPage(PageContext& c) {
     endCard();
     ImGui::Dummy(ImVec2(0, 2 * sc));
     if (drawEnhancementEditor(s.enhancement, "global")) c.actions.settingsChanged();
+    ImGui::EndDisabled();
 }
 
 } // namespace bgn::ui

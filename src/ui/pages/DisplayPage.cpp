@@ -13,6 +13,8 @@ void drawDisplayPage(PageContext& c) {
     const float sc = ImGui::GetStyle().FontScaleDpi;
     const float W = ImGui::GetContentRegionAvail().x;
 
+    const bool omakase = omakaseBanner(c);
+    ImGui::BeginDisabled(omakase);
     beginCard("output", ImVec2(W, 0));
     sectionTitle(tr("Output"), tr("Better GFN Neural shows the enhanced picture in a click-through overlay exactly over GeForce NOW. Mouse, keyboard and controllers keep working normally."));
     label(tr("Output mode"));
@@ -46,6 +48,7 @@ void drawDisplayPage(PageContext& c) {
         }
     }
     endCard();
+    ImGui::EndDisabled();
     ImGui::Dummy(ImVec2(0, 2 * sc));
 
     beginCard("osd", ImVec2(W, 0));

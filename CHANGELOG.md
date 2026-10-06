@@ -5,6 +5,19 @@
 Focus: **low-spec PCs** — realistic AI correction with very low latency and
 smooth, natural motion.
 
+### Added — Omakase mode (on by default, no settings needed)
+- Fully automatic mode: the game type is recognized from the title
+  (competitive / story & open world / racing / pixel art & voxel / other,
+  ~90 title keywords) and tuned accordingly (competitive: latency first, no
+  frame interpolation; story: picture first; racing: smooth motion first).
+  Auto Mode, natural look, automatic color/HDR, adaptive cleanup, stutter
+  smoothing and Low Latency Mode are always on; manual settings are kept but
+  ignored until "Adjust manually instead" is chosen.
+- Per-game learning: the quality tier a game settles at on this PC is stored
+  in its profile (per GPU) and used as the starting tier next time.
+- Home shows what Omakase decided; manual pages show an "Omakase mode is on"
+  banner with their controls dimmed.
+
 ### Added — low-spec / latency / smoothness
 - **NSR-T**: a new 336-parameter neural upscaler that runs as one fused compute
   pass (groupshared tiles), so integrated GPUs (Intel UHD / Iris Xe, AMD Vega /

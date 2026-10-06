@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "profiles/ProfileManager.h"
+#include "settings/Presets.h"
 #include "ui/I18n.h"
 #include "ui/Pages.h"
 #include "ui/Theme.h"
@@ -19,6 +20,7 @@ void drawGamesPage(PageContext& c) {
     if (!selected.empty() && !s.profiles.count(selected)) selected.clear();
     if (selected.empty() && !s.profiles.empty()) selected = s.profiles.begin()->first;
 
+    const bool omakase = omakaseBanner(c);
     const float listW = 300 * sc, gap = 12 * sc;
     beginCard("list", ImVec2(listW, 0));
     sectionTitle(tr("Game profiles"), tr("Created automatically from the GeForce NOW window title. Built-in tuning for popular games."));
@@ -57,6 +59,14 @@ void drawGamesPage(PageContext& c) {
         GameProfile& p = it->second;
         beginCard("profileHeader", ImVec2(W - listW - gap, 0));
         sectionTitle(p.displayName.c_str(), p.builtin ? tr("Built-in profile tuned for this game. You can change everything.") : nullptr);
+        if (omakase) {
+            const GameKind kind = classifyGame(p.key);
+            std::string line = trf("Omakase: {}", tr(toString(kind)));
+            if (p.learnedTier >= 0) line += "  \xC2\xB7  " + trf("Learned \xC2\xB7 starts at {}", trText(tierName(p.learnedTier)));
+            textColored(col::Accent, line.c_str(), kFontBody, true);
+            ImGui::Dummy(ImVec2(0, 2 * sc));
+        }
+        ImGui::BeginDisabled(omakase);
         bool changed = false;
         changed |= toggleRow(tr("Use global settings"), &p.useGlobal);
         ImGui::BeginDisabled(p.useGlobal);
@@ -80,12 +90,14 @@ void drawGamesPage(PageContext& c) {
             std::string key = p.key;
             selected.clear();
             c.actions.deleteProfile(key);
+            ImGui::EndDisabled();
             endCard();
             ImGui::EndGroup();
             return;
         }
         endCard();
         if (!p.useGlobal) changed |= drawEnhancementEditor(p.enhancement, p.key.c_str());
+        ImGui::EndDisabled();
         if (changed) c.actions.settingsChanged();
     } else {
         beginCard("empty", ImVec2(W - listW - gap, 0));

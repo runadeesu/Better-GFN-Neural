@@ -72,6 +72,9 @@ $histFile = Join-Path $data "history.json"
 $histText = if (Test-Path $histFile) { Get-Content $histFile -Raw -Encoding utf8 } else { "" }
 Check "history_recorded" ($histText -match "Cyberpunk 2077") "history.json $(if ($histText) { ($histText | ConvertFrom-Json).sessions.Count } else { 0 }) sessions"
 Check "settings_saved" (Test-Path (Join-Path $data "settings.json")) "settings.json"
+$setText = Get-Content (Join-Path $data "settings.json") -Raw -Encoding utf8
+$learned = [regex]::Matches($setText, '"learned_tier":\s*([0-9])').Count
+Check "omakase_learned_tier" ($learned -ge 1 -and $setText -match '"omakase":\s*true') "profiles with a learned tier: $learned"
 Check "log_written" ((Get-ChildItem (Join-Path $data "logs") -Filter "*.log" -ErrorAction SilentlyContinue).Count -ge 1) "logs folder"
 $logText = (Get-ChildItem (Join-Path $data "logs") -Filter "*.log" | Get-Content -Raw)
 Check "log_privacy" (-not ($logText -match [regex]::Escape($env:USERNAME))) "user name not present in logs"

@@ -157,3 +157,18 @@ consecutive crashes; corrupt settings → backup/defaults.
   cleanup only when the stream is actually blocky.
 * Recommended for low-spec PCs: preset **Auto** (or **Low Latency**), frame
   interpolation **Off** or **Auto**, stutter smoothing **On**.
+
+## 14. Omakase mode (fully automatic, default) — `src/profiles/Omakase.cpp`
+
+* `classifyGame()` maps the game key to Competitive / Cinematic / Racing /
+  Blocky / General (keyword table, racing checked before cinematic so
+  "forzahorizon" is racing). The built-in profiles use the same kinds.
+* `planOmakase()` builds the engine configuration: the kind's tuning, Auto
+  preset (Low Latency for competitive), Natural style, automatic upscaler,
+  color and HDR, adaptive cleanup. Low Latency Mode, stutter smoothing and
+  automatic output are forced on. Accessibility, OSD and battery settings are
+  personal and kept.
+* Learning: while enhancing on AC power, the time spent at each tier is
+  accumulated per game; at the end of a session (≥ 60 s) the dominant tier is
+  stored in the profile with the GPU name (`learned_tier`, `learned_gpu`) and
+  used as the starting tier next time on the same GPU.

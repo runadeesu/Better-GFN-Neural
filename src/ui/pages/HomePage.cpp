@@ -3,6 +3,7 @@
 #include <format>
 
 #include "core/StringUtil.h"
+#include "settings/Presets.h"
 #include "ui/I18n.h"
 #include "ui/Pages.h"
 #include "ui/Theme.h"
@@ -31,6 +32,44 @@ static ImU32 stateColor(GfnState s, bool enhancing) {
     case GfnState::Streaming: return col::Accent2;
     }
     return col::Waiting;
+}
+
+static const char* kindPriority(GameKind k) {
+    switch (k) {
+    case GameKind::Competitive: return "Lowest latency first";
+    case GameKind::Cinematic: return "Best picture first";
+    case GameKind::Racing: return "Smooth motion first";
+    case GameKind::Blocky: return "Stable, crisp picture";
+    case GameKind::General: break;
+    }
+    return "Balanced";
+}
+
+// One "label ..... value" line.
+static void infoLine(const char* lbl, const std::string& value, ImU32 valueColor = col::Text) {
+    const float sc = ImGui::GetStyle().FontScaleDpi;
+    const float x0 = ImGui::GetCursorPosX();
+    textColored(col::TextDim, lbl, kFontBody);
+    ImGui::SameLine(x0 + 170 * sc);
+    textColored(valueColor, value.c_str(), kFontBody, true);
+}
+
+bool omakaseBanner(PageContext& c) {
+    Settings& s = c.settings;
+    if (!s.omakase) return false;
+    const float sc = ImGui::GetStyle().FontScaleDpi;
+    beginCard("omakaseBanner", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+    textColored(col::Accent, tr("Omakase mode is on"), kFontTitle, true);
+    englishHint(tr("Omakase mode is on"), kFontTitle);
+    textWrappedDim(tr("Picture, smoothness and latency are decided automatically for each game and this PC. You don't need to change anything here."));
+    ImGui::Dummy(ImVec2(0, 2 * sc));
+    if (secondaryButton(tr("Adjust manually instead"))) {
+        s.omakase = false;
+        c.actions.settingsChanged();
+    }
+    endCard();
+    ImGui::Dummy(ImVec2(0, 2 * sc));
+    return true;
 }
 
 void drawHomePage(PageContext& c) {
@@ -76,7 +115,7 @@ void drawHomePage(PageContext& c) {
         pill(s.autoMode ? (std::string(tr("Auto Mode")) + "  " + tr("On")).c_str() : (std::string(tr("Auto Mode")) + "  " + tr("Off")).c_str(),
              s.autoMode ? col::Accent : col::Waiting);
         ImGui::SameLine();
-        pill(presetName(s.preset), col::Accent2);
+        pill(s.omakase ? tr("Omakase") : presetName(s.preset), col::Accent2);
         if (e.hdrOutput) {
             ImGui::SameLine();
             pill("HDR+", col::Warn);
@@ -165,27 +204,53 @@ void drawHomePage(PageContext& c) {
     // ---------------- Quick settings + live graph ---------------------------
     const float leftW = (W - gap) * 0.58f, rightW = W - gap - leftW;
     beginCard("quick", ImVec2(leftW, 0));
-    sectionTitle(tr("Quick settings"));
-    {
-        label(tr("Preset"));
-        const char* presets[] = {presetName(Preset::Auto), presetName(Preset::Ultra), presetName(Preset::Quality), presetName(Preset::Balanced),
-                                 presetName(Preset::Performance), presetName(Preset::LowLatency)};
-        int p = int(s.preset);
-        if (segmented("preset", &p, presets, 6)) {
-            s.preset = Preset(p);
+    if (s.omakase) {
+        sectionTitle(tr("Omakase mode"));
+        textWrappedDim(tr("No settings needed. Better GFN Neural recognizes the game type, measures this PC and tunes AI upscaling, smoothness and latency by itself. It also remembers what works for each game, so the next session starts right away at the best level."));
+        ImGui::Dummy(ImVec2(0, 4 * sc));
+        const bool game = !m.profileKey.empty();
+        infoLine(tr("Game type"), game ? std::string(tr(toString(m.omakaseKind))) : std::string(tr("Waiting for a game")));
+        infoLine(tr("Tuning"), tr(kindPriority(m.omakaseKind)));
+        infoLine(tr("AI upscaling"), enhancing ? std::string(tr(toString(e.upscaler))) : std::string(tr("Automatic")));
+        const char* fgText = m.omakaseKind == GameKind::Competitive ? "Off (latency first)" : (enhancing && e.frameGenActive ? "On" : "Automatic");
+        infoLine(tr("Frame Interpolation"), tr(fgText));
+        infoLine(tr("Stutter smoothing"), tr("On"), col::Accent);
+        if (game)
+            infoLine(tr("Learning"), m.omakaseLearned ? trf("Learned \xC2\xB7 starts at {}", trText(tierName(m.omakaseLearnedTier))) : std::string(tr("Learning this game on this PC")),
+                     m.omakaseLearned ? col::Accent : col::TextDim);
+        ImGui::Dummy(ImVec2(0, 4 * sc));
+        if (linkButton((std::string(tr("Adjust manually instead")) + "  \xE2\x86\x92").c_str())) {
+            s.omakase = false;
             c.actions.settingsChanged();
         }
-        if (toggleRow(tr("Auto Mode"), &s.autoMode)) c.actions.settingsChanged();
-        if (toggleRow(tr("Low Latency Mode"), &s.lowLatency)) c.actions.settingsChanged();
-        if (toggleRow(tr("Stutter smoothing"), &s.stutterSmoothing, tr("When a stream frame arrives late (network hiccup), a motion-continued frame is shown instead of a frozen picture. Real frames are never delayed, so no latency is added."))) c.actions.settingsChanged();
-        label(tr("Frame Interpolation"));
-        const char* fg[] = {tr("Off"), tr("Auto"), "2x"};
-        int f = int(s.enhancement.frameGen);
-        if (segmented("fg", &f, fg, 3)) {
-            s.enhancement.frameGen = FrameGenMode(f);
+    } else {
+        sectionTitle(tr("Quick settings"));
+        {
+            label(tr("Preset"));
+            const char* presets[] = {presetName(Preset::Auto), presetName(Preset::Ultra), presetName(Preset::Quality), presetName(Preset::Balanced),
+                                     presetName(Preset::Performance), presetName(Preset::LowLatency)};
+            int p = int(s.preset);
+            if (segmented("preset", &p, presets, 6)) {
+                s.preset = Preset(p);
+                c.actions.settingsChanged();
+            }
+            if (toggleRow(tr("Auto Mode"), &s.autoMode)) c.actions.settingsChanged();
+            if (toggleRow(tr("Low Latency Mode"), &s.lowLatency)) c.actions.settingsChanged();
+            if (toggleRow(tr("Stutter smoothing"), &s.stutterSmoothing, tr("When a stream frame arrives late (network hiccup), a motion-continued frame is shown instead of a frozen picture. Real frames are never delayed, so no latency is added."))) c.actions.settingsChanged();
+            label(tr("Frame Interpolation"));
+            const char* fg[] = {tr("Off"), tr("Auto"), "2x"};
+            int f = int(s.enhancement.frameGen);
+            if (segmented("fg", &f, fg, 3)) {
+                s.enhancement.frameGen = FrameGenMode(f);
+                c.actions.settingsChanged();
+            }
+            if (linkButton((std::string(tr("Advanced settings")) + "  \xE2\x86\x92").c_str())) c.page = Page::Enhancement;
+        }
+        ImGui::Dummy(ImVec2(0, 2 * sc));
+        if (primaryButton(tr("Back to Omakase (fully automatic)"))) {
+            s.omakase = true;
             c.actions.settingsChanged();
         }
-        if (linkButton((std::string(tr("Advanced settings")) + "  \xE2\x86\x92").c_str())) c.page = Page::Enhancement;
     }
     endCard();
     ImGui::SameLine(0, gap);

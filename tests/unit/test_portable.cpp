@@ -16,6 +16,7 @@
 #include "gfn/GfnClassifier.h"
 #include "media/ImageOps.h"
 #include "profiles/GameTitle.h"
+#include "profiles/Omakase.h"
 #include "profiles/ProfileManager.h"
 #include "settings/Presets.h"
 #include "settings/Settings.h"
@@ -1052,6 +1053,94 @@ TEST_CASE("nsr_reference_models") {
     }
     CHECK_EQ(nsrModelS().channels(), 8);
     CHECK_EQ(nsrModelL().channels(), 16);
+}
+
+TEST_CASE("omakase_classifies_games") {
+    CHECK(classifyGame("apexlegends") == GameKind::Competitive);
+    CHECK(classifyGame("callofdutyblackops6") == GameKind::Competitive);
+    CHECK(classifyGame("valorant") == GameKind::Competitive);
+    CHECK(classifyGame("cs2") == GameKind::Competitive);
+    CHECK(classifyGame("tekken8") == GameKind::Competitive);
+    CHECK(classifyGame("eldenringnightreign") == GameKind::Cinematic);
+    CHECK(classifyGame("horizonforbiddenwest") == GameKind::Cinematic);
+    CHECK(classifyGame("forzahorizon5") == GameKind::Racing); // racing wins over "horizon"
+    CHECK(classifyGame("f124") == GameKind::Racing);
+    CHECK(classifyGame("minecraft") == GameKind::Blocky);
+    CHECK(classifyGame("trustissues") == GameKind::General); // "rust" only as a prefix
+    CHECK(classifyGame("someindiegame") == GameKind::General);
+    CHECK(classifyGame("") == GameKind::General);
+    // Built-in templates follow the same kinds
+    auto p = ProfileManager::builtinTemplate("fortnite", "Fortnite");
+    if (!p) { CHECK(p.has_value()); return; }
+    CHECK(p->enhancement.frameGen == FrameGenMode::Off);
+    CHECK(p->priority == PerformancePriority::Latency);
+}
+
+TEST_CASE("omakase_plan_ignores_manual_settings") {
+    Settings s;
+    CHECK(s.omakase); // on by default
+    // Manual settings that would hurt: Ultra, fixed sharpen, vivid style, native
+    s.preset = Preset::Ultra;
+    s.enhancement.style = VisualStyle::Vivid;
+    s.enhancement.upscale = UpscaleMode::Native;
+    s.enhancement.sharpen = {true, false, 1.0f};
+    OmakasePlan g = planOmakase(s, "", "GPU");
+    CHECK(g.kind == GameKind::General);
+    CHECK(g.preset == Preset::Auto);
+    CHECK(g.enhancement.style == VisualStyle::Natural);
+    CHECK(g.enhancement.upscale == UpscaleMode::Auto);
+    CHECK(g.enhancement.sharpen.automatic);
+    CHECK(g.enhancement.frameGen == FrameGenMode::Auto);
+    CHECK_EQ(g.initialTier, -1);
+    CHECK(!g.learned);
+
+    OmakasePlan comp = planOmakase(s, "apexlegends", "GPU");
+    CHECK(comp.kind == GameKind::Competitive);
+    CHECK(comp.enhancement.frameGen == FrameGenMode::Off); // no interpolation hold-back in shooters
+    CHECK(comp.priority == PerformancePriority::Latency);
+    OmakasePlan cine = planOmakase(s, "eldenring", "GPU");
+    CHECK(cine.kind == GameKind::Cinematic);
+    CHECK(cine.enhancement.frameGen == FrameGenMode::Auto);
+}
+
+TEST_CASE("omakase_learns_tier_per_game_and_gpu") {
+    Settings s;
+    s.benchmark.valid = true;
+    s.benchmark.gpuName = "Intel(R) UHD Graphics 620";
+    s.benchmark.recommendedTier = 1;
+    std::string key = ProfileManager::onGameDetected(s, "Elden Ring", 100);
+    CHECK_EQ(planOmakase(s, key, "Intel(R) UHD Graphics 620").initialTier, 1); // benchmark until learned
+
+    std::map<int, double> t{{1, 12.0}, {2, 300.0}, {3, 40.0}};
+    CHECK_EQ(dominantTier(t), 2);
+    CHECK_EQ(dominantTier({}), -1);
+    CHECK(learnTier(s.profiles[key], 2, "Intel(R) UHD Graphics 620"));
+    CHECK(!learnTier(s.profiles[key], 2, "Intel(R) UHD Graphics 620")); // unchanged
+    CHECK(!learnTier(s.profiles[key], 9, "Intel(R) UHD Graphics 620"));
+    OmakasePlan p = planOmakase(s, key, "Intel(R) UHD Graphics 620");
+    CHECK(p.learned);
+    CHECK_EQ(p.initialTier, 2);
+    // Another GPU: the learned tier does not apply
+    OmakasePlan other = planOmakase(s, key, "NVIDIA GeForce RTX 4070");
+    CHECK(!other.learned);
+    CHECK_EQ(other.initialTier, -1);
+    // Competitive games clamp the learned tier into the Low Latency range
+    std::string fk = ProfileManager::onGameDetected(s, "Fortnite", 100);
+    learnTier(s.profiles[fk], 6, "GPU");
+    OmakasePlan f = planOmakase(s, fk, "GPU");
+    CHECK(f.learned);
+    CHECK(f.initialTier <= policyFor(f.preset, true, f.priority).maxTier);
+
+    // Persisted in settings.json
+    Settings back;
+    std::string err;
+    CHECK(settingsFromJson(settingsToJson(s), back, &err));
+    CHECK_EQ(back.profiles[key].learnedTier, 2);
+    CHECK_EQ(back.profiles[key].learnedGpu, std::string("Intel(R) UHD Graphics 620"));
+    CHECK(back.omakase);
+    s.omakase = false;
+    CHECK(settingsFromJson(settingsToJson(s), back, &err));
+    CHECK(!back.omakase);
 }
 
 int main(int argc, char** argv) { return bgntest::runAll(argc > 1 ? argv[1] : nullptr); }

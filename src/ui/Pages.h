@@ -30,6 +30,10 @@ bool drawFirstRun(PageContext& c, float timeSinceStart);
 // Shared editor for global settings and per-game profiles. Returns true if modified.
 bool drawEnhancementEditor(EnhancementSettings& e, const char* idScope);
 
+// "Omakase mode is on" banner for pages with manual settings. Returns true
+// while Omakase is on (the caller then shows its controls disabled).
+bool omakaseBanner(PageContext& c);
+
 // Helpers shared by pages
 const char* presetName(Preset p);
 std::string resolutionText(int w, int h);

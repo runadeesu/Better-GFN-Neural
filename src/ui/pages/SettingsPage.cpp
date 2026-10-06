@@ -199,8 +199,8 @@ bool drawFirstRun(PageContext& c, float t) {
     } steps[] = {{tr("Checking GPU"), gpu},
                  {tr("Checking monitors"), mon},
                  {tr("Looking for GeForce NOW"), gfn},
-                 {tr("Enabling Auto Mode"), std::string(tr("Auto Mode")) + " \xC2\xB7 " + presetName(Preset::Auto)},
-                 {tr("All set"), tr("Everything runs automatically. Start a game in GeForce NOW and it will be enhanced.")}};
+                 {tr("Turning on Omakase mode"), tr("No settings needed - tuned automatically for each game and this PC")},
+                 {tr("All set"), tr("Just start a game in GeForce NOW. The type of game is recognized and AI upscaling, smoothness and latency are tuned automatically.")}};
     const int done = std::min(5, int(t / 0.6f));
     for (int i = 0; i < 5; ++i) {
         ImVec2 p = ImGui::GetCursorScreenPos();

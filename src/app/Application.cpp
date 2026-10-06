@@ -22,6 +22,7 @@
 #include "platform/CursorControl.h"
 #include "platform/Display.h"
 #include "platform/Startup.h"
+#include "profiles/Omakase.h"
 #include "profiles/ProfileManager.h"
 #include "renderer/GpuDevice.h"
 #include "ui/I18n.h"
@@ -371,8 +372,35 @@ void Application::finishHistorySession() {
     }
 }
 
+void Application::finishTierLearning() {
+    const double total = [this] {
+        double t = 0;
+        for (const auto& [tier, sec] : learnTierTime_) t += sec;
+        return t;
+    }();
+    const double minSeconds = cmd_.automation.empty() ? 60.0 : 3.0;
+    const int tier = dominantTier(learnTierTime_);
+    if (!learnGame_.empty() && total >= minSeconds && tier >= 0) {
+        auto it = settings_.profiles.find(learnGame_);
+        if (it != settings_.profiles.end() && learnTier(it->second, tier, gpuName())) {
+            BGN_LOG_INFO("App", "omakase: {} settles at tier {} on this PC", learnGame_, tier);
+            // Saved with the next settings write; the running engine config stays as it is.
+            if (!dirty_) dirtySince_ = qpcSeconds();
+            dirty_ = true;
+        }
+    }
+    learnTierTime_.clear();
+    learnGame_.clear();
+}
+
 void Application::sampleHistory(double dt) {
     const EngineStats& e = model_.engine;
+    if (learnGame_ != currentProfile_) finishTierLearning();
+    // Battery cap and safe mode limit the tier artificially: not learned.
+    if (e.overlayVisible && !currentProfile_.empty() && settings_.omakase && !e.batterySaverActive && !safeMode_) {
+        learnGame_ = currentProfile_;
+        learnTierTime_[e.tier] += dt; // time-weighted: short ramps and dips do not decide
+    }
     if (!settings_.recordHistory) {
         if (recorder_.active()) finishHistorySession();
         return;
@@ -519,9 +547,20 @@ void Application::saveNow() {
     dirty_ = false;
 }
 
+// Adapter the engine runs on (the first hardware GPU; WARP when there is none).
+std::string Application::gpuName() const {
+    if (!model_.engine.gpuName.empty()) return model_.engine.gpuName;
+    return model_.gpus.empty() ? std::string() : model_.gpus.front().name;
+}
+
 void Application::updateEngine() {
     ResolvedProfile rp = ProfileManager::resolve(settings_, currentProfile_);
     EngineConfig c;
+    OmakasePlan plan;
+    if (settings_.omakase) plan = planOmakase(settings_, currentProfile_, gpuName());
+    model_.omakaseKind = plan.kind;
+    model_.omakaseLearned = plan.learned;
+    model_.omakaseLearnedTier = plan.learned ? plan.initialTier : -1;
     c.enabled = settings_.enhancementEnabled && (settings_.autoStart || manualStart_);
     c.autoMode = settings_.autoMode;
     c.preset = rp.fromProfile ? rp.preset : settings_.preset;
@@ -542,6 +581,24 @@ void Application::updateEngine() {
     c.safeMode = safeMode_;
     const BenchmarkResult& b = settings_.benchmark;
     if (b.valid && !model_.gpus.empty() && b.gpuName == model_.gpus.front().name) c.initialTier = b.recommendedTier;
+    if (settings_.omakase) {
+        // Everything automatic: game-type tuning, Auto Mode, low latency,
+        // stutter smoothing, automatic output. Personal settings (accessibility,
+        // OSD, battery, monitor) are kept.
+        c.autoMode = true;
+        c.preset = plan.preset;
+        c.priority = plan.priority;
+        c.enhancement = plan.enhancement;
+        c.lowLatency = true;
+        c.stutterSmoothing = true;
+        c.outputMode = OutputMode::Auto;
+        c.outputResolution = OutputResolution::Auto;
+        c.streamResolution = StreamResolution::Auto;
+        c.captureBackend = CaptureBackend::Auto;
+        c.compareSplit = false;
+        c.initialTier = plan.initialTier;
+        c.initialTierLearned = plan.learned;
+    }
     c.revision = ++engineRevision_;
     engine_.setConfig(c);
 }
@@ -747,6 +804,7 @@ void Application::shutdown() {
     if (benchThread_.joinable()) benchThread_.join();
     engine_.stop();
     finishHistorySession();
+    finishTierLearning();
     CursorControl::emergencyRestore();
     if (store_ && (dirty_ || true)) store_->save(settings_);
     tray_.destroy();

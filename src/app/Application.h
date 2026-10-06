@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <string>
 #include <thread>
@@ -78,6 +79,10 @@ private:
     bool manualStart_ = false;
     uint64_t lastScreenshotCount_ = 0;
     SessionRecorder recorder_;
+    std::map<int, double> learnTierTime_; // Omakase: time per tier in the current game session
+    std::string learnGame_;
+    void finishTierLearning();
+    std::string gpuName() const;
     std::vector<SessionRecord> history_;
     bool automationShotTaken_ = false;
     HANDLE instanceMutex_ = nullptr;
