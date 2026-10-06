@@ -6,7 +6,7 @@
 #include "common.hlsli"
 
 Texture2D<float4> gQualitySrc : register(t0);
-RWByteAddressBuffer gOut : register(u0);
+RWByteAddressBuffer gQualityOut : register(u0);
 
 groupshared uint sB, sBn, sI, sIn;
 
@@ -45,9 +45,9 @@ void main(uint3 id : SV_DispatchThreadID, uint gi : SV_GroupIndex) {
     }
     GroupMemoryBarrierWithGroupSync();
     if (gi == 0) {
-        gOut.InterlockedAdd(0, sB);
-        gOut.InterlockedAdd(4, sBn);
-        gOut.InterlockedAdd(8, sI);
-        gOut.InterlockedAdd(12, sIn);
+        gQualityOut.InterlockedAdd(0, sB);
+        gQualityOut.InterlockedAdd(4, sBn);
+        gQualityOut.InterlockedAdd(8, sI);
+        gQualityOut.InterlockedAdd(12, sIn);
     }
 }
