@@ -10,7 +10,7 @@ jobs:
     name: Portable core (Linux) - unit tests + NSR trainer build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Configure
         run: cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
       - name: Build
@@ -25,7 +25,7 @@ jobs:
     runs-on: windows-2022
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
@@ -41,7 +41,7 @@ jobs:
     name: Windows x64 - build, test, package
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -97,7 +97,7 @@ jobs:
 
       - name: Upload release artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: BetterGFNNeural-1.0.0-windows-x64
           path: |
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results
           path: |

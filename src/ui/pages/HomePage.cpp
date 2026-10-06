@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <format>
 
@@ -42,7 +43,9 @@ void drawHomePage(PageContext& c) {
     const ImU32 accent = stateColor(m.gfn.state, enhancing);
 
     // ---------------- Hero -------------------------------------------------
-    beginCard("hero", ImVec2(W, 176 * sc));
+    // Auto height: the text column (title, subtitle, pills, action button) grows
+    // with the language and DPI; the orb defines the minimum height.
+    beginCard("hero", ImVec2(W, 0));
     {
         ImVec2 p = ImGui::GetCursorScreenPos();
         statusOrb(ImVec2(p.x + 58 * sc, p.y + 70 * sc), 44 * sc, accent, enhancing || m.gfn.state == GfnState::Streaming);
@@ -102,6 +105,9 @@ void drawHomePage(PageContext& c) {
             }
         }
         ImGui::EndGroup();
+        const float bottom = std::max(ImGui::GetItemRectMax().y, p.y + 132 * sc);
+        ImGui::SetCursorScreenPos(ImVec2(p.x, bottom));
+        ImGui::Dummy(ImVec2(1, 1));
     }
     endCard();
     ImGui::Dummy(ImVec2(0, 2 * sc));
@@ -128,7 +134,7 @@ void drawHomePage(PageContext& c) {
          enhancing ? std::format("in {:.0f} fps{}", e.inputFps, e.frameGenActive ? "  \xC2\xB7  2x" : "") : "", col::Accent, Icon::Chart);
     tile(6, "LATENCY", enhancing ? std::format("+{:.1f} ms", e.addedLatencyMs) : std::string("-"), tr("Added latency"),
          e.addedLatencyMs > 14 ? col::Warn : col::Accent, Icon::Bolt);
-    std::string gpu = e.gpuName.empty() ? (m.gpus.empty() ? std::string("-") : m.gpus.front().name) : e.gpuName;
+    std::string gpu = e.gpuName.empty() ? (m.gpus.empty() ? std::string(tr("No hardware GPU")) : m.gpus.front().name) : e.gpuName;
     tile(7, "GPU", shortGpuName(gpu),
          enhancing ? std::format("{:.1f} ms  \xC2\xB7  {}", e.gpuMsAvg, m.system.gpuUsage >= 0 ? std::format("{:.0f}%", m.system.gpuUsage * 100) : "-")
                    : (m.gpus.empty() ? "" : m.gpus.front().family),

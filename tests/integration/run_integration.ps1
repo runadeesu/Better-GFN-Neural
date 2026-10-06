@@ -79,7 +79,7 @@ for ($i = 0; $i -lt 2; $i++) {
     $p.WaitForExit(30000) | Out-Null
 }
 $dumps = Get-ChildItem (Join-Path $cdata "logs") -Filter "crash_*.dmp" -ErrorAction SilentlyContinue
-Check "crash_minidump" ($dumps.Count -ge 1) "dumps: $($dumps.Count)"
+Check "crash_minidump" ($dumps.Count -ge 2) "dumps: $($dumps.Count) (expected one per crash)"
 $creport = Join-Path $OutDir "after_crash.json"
 $p = Start-Process -FilePath $Exe -ArgumentList @("--automation", "recover", "--seconds", "4", "--data-dir", "`"$cdata`"", "--output", "`"$creport`"") -PassThru
 $p.WaitForExit(30000) | Out-Null

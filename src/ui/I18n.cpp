@@ -31,6 +31,7 @@ const std::unordered_map<std::string_view, const char*>& japanese() {
         {"GeForce NOW is running. Start a game to enhance it automatically.", "GeForce NOW を検出しました。ゲームを開始すると自動で画質強化が始まります。"},
         {"Launch GeForce NOW", "GeForce NOWを起動"},
         {"Waiting for GeForce NOW", "GeForce NOW を待機中"},
+        {"No hardware GPU", "ハードウェア GPU なし"},
         {"Enhancing", "強化中"},
         {"Ready - switch to GeForce NOW to see the enhanced picture", "準備完了 - GeForce NOW に切り替えると強化映像が表示されます"},
         {"Pause enhancement", "画質強化を一時停止"},

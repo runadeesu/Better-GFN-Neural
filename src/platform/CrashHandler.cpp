@@ -26,7 +26,9 @@ LONG WINAPI crashFilter(EXCEPTION_POINTERS* info) {
     SYSTEMTIME st;
     GetLocalTime(&st);
     wchar_t path[MAX_PATH];
-    swprintf_s(path, L"%s\\crash_%04d%02d%02d_%02d%02d%02d.dmp", gDumpDir, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+    // Milliseconds + PID keep dumps from crashes in quick succession apart.
+    swprintf_s(path, L"%s\\crash_%04d%02d%02d_%02d%02d%02d_%03d_%lu.dmp", gDumpDir, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond,
+               st.wMilliseconds, GetCurrentProcessId());
     HANDLE file = CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     bool dumped = false;
     if (file != INVALID_HANDLE_VALUE) {
