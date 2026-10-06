@@ -252,9 +252,16 @@ TEST_CASE("presets_resolve_tiers") {
     CHECK_EQ(t6.flowQuality, 2);
     CHECK(t6.cleanupHQ);
 
+    auto t1 = resolveConfig(e, 1, true);
+    CHECK(t1.upscaler == UpscalerKind::NsrT); // low-end GPUs still get the AI upscaler
+    auto t2 = resolveConfig(e, 2, true);
+    CHECK(t2.upscaler == UpscalerKind::NsrT);
+    CHECK(t2.temporal > 0.0f);
+    CHECK(t2.needsFlow()); // temporal without motion vectors would ghost
+
     e.upscale = UpscaleMode::Quality;
     auto reduced = resolveConfig(e, 2, true);
-    CHECK(reduced.upscaler == UpscalerKind::LanczosAR);
+    CHECK(reduced.upscaler == UpscalerKind::NsrT);
     CHECK(reduced.upscalerReduced);
     auto manual = resolveConfig(e, 2, false);
     CHECK(manual.upscaler == UpscalerKind::NsrL);
@@ -295,6 +302,10 @@ TEST_CASE("gpu_classification") {
     CHECK_EQ(estimateTierForGpu(0x10DE, "NVIDIA GeForce RTX 3060", 12), 4);
     CHECK_EQ(estimateTierForGpu(0x10DE, "NVIDIA GeForce GTX 1060 6GB", 6), 2);
     CHECK_EQ(estimateTierForGpu(0x1414, "Microsoft Basic Render Driver", 0), 0);
+    // integrated graphics start on the AI path (NSR-T tiers)
+    CHECK_EQ(estimateTierForGpu(0x8086, "Intel(R) UHD Graphics 620", 0), 1);
+    CHECK_EQ(estimateTierForGpu(0x8086, "Intel(R) Iris(R) Xe Graphics", 0), 2);
+    CHECK(resolveConfig(EnhancementSettings{}, estimateTierForGpu(0x8086, "Intel(R) UHD Graphics 620", 0), true).upscaler == UpscalerKind::NsrT);
     CHECK(preferHalfPrecision(0x10DE, "NVIDIA GeForce RTX 3080"));
     CHECK(!preferHalfPrecision(0x10DE, "NVIDIA GeForce GTX 1080"));
     CHECK(preferHalfPrecision(0x1002, "AMD Radeon RX 6700 XT"));
@@ -983,7 +994,9 @@ TEST_CASE("content_resolution_detection") {
 }
 
 TEST_CASE("nsr_reference_models") {
-    for (const NsrModelData* m : {&nsrModelS(), &nsrModelL()}) {
+    CHECK_EQ(nsrModelT().channels(), 4);
+    CHECK_EQ(nsrModelT().hiddenLayers(), 1);
+    for (const NsrModelData* m : {&nsrModelT(), &nsrModelS(), &nsrModelL()}) {
         CHECK(m->layers.size() >= 3);
         CHECK_EQ(m->layers.front().cin, 1);
         CHECK_EQ(m->layers.back().cout, 4);

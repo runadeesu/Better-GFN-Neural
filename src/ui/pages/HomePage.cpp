@@ -95,6 +95,10 @@ void drawHomePage(PageContext& c) {
             pill(std::format("{} {:.0f} \xC2\xB7 {}", tr("Stream quality"), e.streamQuality, tr(q)).c_str(),
                  e.streamQuality >= 60 ? col::Accent : (e.streamQuality >= 40 ? col::Warn : col::Error));
         }
+        if (enhancing && e.upscaler == UpscalerKind::NsrT) {
+            ImGui::SameLine();
+            pill(tr("Low-spec AI"), col::Accent2);
+        }
         if (e.batterySaverActive) {
             ImGui::SameLine();
             pill(tr("Battery saver"), col::Warn);
@@ -173,6 +177,7 @@ void drawHomePage(PageContext& c) {
         }
         if (toggleRow(tr("Auto Mode"), &s.autoMode)) c.actions.settingsChanged();
         if (toggleRow(tr("Low Latency Mode"), &s.lowLatency)) c.actions.settingsChanged();
+        if (toggleRow(tr("Stutter smoothing"), &s.stutterSmoothing, tr("When a stream frame arrives late (network hiccup), a motion-continued frame is shown instead of a frozen picture. Real frames are never delayed, so no latency is added."))) c.actions.settingsChanged();
         label(tr("Frame Interpolation"));
         const char* fg[] = {tr("Off"), tr("Auto"), "2x"};
         int f = int(s.enhancement.frameGen);

@@ -414,6 +414,7 @@ void Application::updateEngine() {
     c.preset = rp.fromProfile ? rp.preset : settings_.preset;
     c.priority = rp.priority;
     c.lowLatency = settings_.lowLatency;
+    c.stutterSmoothing = settings_.stutterSmoothing;
     c.enhancement = rp.enhancement;
     c.outputMode = settings_.outputMode;
     c.outputResolution = settings_.outputResolution;

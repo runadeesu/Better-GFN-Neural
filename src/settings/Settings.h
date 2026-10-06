@@ -148,6 +148,7 @@ struct Settings {
     bool autoMode = true;
     Preset preset = Preset::Auto;
     bool lowLatency = true;
+    bool stutterSmoothing = true;   // fill late stream frames with a motion-extrapolated frame
     OutputMode outputMode = OutputMode::Auto;
     OutputResolution outputResolution = OutputResolution::Auto;
     StreamResolution streamResolution = StreamResolution::Auto;

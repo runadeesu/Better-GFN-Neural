@@ -3,8 +3,8 @@
 namespace bgn {
 
 bool NsrUpscaler::ensure(ID3D11Device* dev, int lrW, int lrH, NsrModel model) {
-    const int need = model == NsrModel::Large ? 4 : 2;
-    if (w_ == lrW && h_ == lrH && groupsAllocated_ >= need) return true;
+    const int need = model == NsrModel::Large ? 4 : (model == NsrModel::Small ? 2 : 0);
+    if (w_ == lrW && h_ == lrH && groupsAllocated_ >= 0 && groupsAllocated_ >= need) return true;
     bool ok = true;
     for (int i = 0; i < 4; ++i) {
         if (i < need) {
@@ -17,7 +17,7 @@ bool NsrUpscaler::ensure(ID3D11Device* dev, int lrW, int lrH, NsrModel model) {
     }
     w_ = lrW;
     h_ = lrH;
-    groupsAllocated_ = ok ? need : 0;
+    groupsAllocated_ = ok ? need : -1;
     return ok;
 }
 
@@ -36,10 +36,16 @@ size_t NsrUpscaler::vramBytes() const {
 
 void NsrUpscaler::run(const GpuContext& g, ID3D11ShaderResourceView* src, ID3D11UnorderedAccessView* hr, NsrModel model) {
     const bool large = model == NsrModel::Large;
+    (void)large;
     const bool half = g.halfPrecision;
     gpu::PassCB p{};
     p.gPassI = u4(uint32_t(w_), uint32_t(h_));
     g.setPass(p);
+    if (model == NsrModel::Tiny) {
+        // Single fused pass, 16x16 low-res pixels per group (shaders/nsr_tiny.hlsl)
+        dispatchCompute(g.ctx, g.cs(ShaderId::nsr_t_cs), {src}, {hr}, groups(w_, 16), groups(h_, 16));
+        return;
+    }
     const UINT gx = groups(w_, 8), gy = groups(h_, 8);
     auto A = [&](int i) { return actA_[i].uav.Get(); };
     auto B = [&](int i) { return actB_[i].uav.Get(); };

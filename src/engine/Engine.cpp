@@ -154,6 +154,8 @@ struct Engine::Session {
     AutoDecision lastDecision;
     StreamQualityTracker quality;
     double lastFrameArrival = 0;
+    bool concealedSinceFrame = false;
+    uint64_t concealed = 0;
     std::deque<float> histQuality;
     int batteryCap = kMaxTier;
 
@@ -484,10 +486,18 @@ void Engine::loopOnce(Session& s) {
     }
 
     // ---- Wait for a frame ----------------------------------------------------
+    // Stutter smoothing: when the stream is running, wake up at the moment the
+    // next frame is clearly late so that a motion-extrapolated frame can fill the gap.
+    const double streamFps = s.inRate.rate(now);
+    const bool concealArmed = s.cfg.stutterSmoothing && s.wasVisible && streamFps >= 20.0 && s.lastFrameArrival > 0 && !s.concealedSinceFrame &&
+                              !s.automode.frameGen();
+    const double concealAt = concealArmed ? s.lastFrameArrival + 1.6 / streamFps : 0.0;
     HANDLE ev = s.capture->frameEvent();
     if (ev) {
         HANDLE handles[2] = {ev, wake_.get()};
-        MsgWaitForMultipleObjectsEx(2, handles, 50, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+        DWORD waitMs = 50;
+        if (concealArmed) waitMs = DWORD(std::clamp((concealAt - now) * 1000.0, 0.0, 50.0));
+        MsgWaitForMultipleObjectsEx(2, handles, waitMs, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
     }
     CapturedFrame frame;
     const bool got = s.capture->acquire(frame, ev ? 0 : 8);
@@ -503,6 +513,7 @@ void Engine::loopOnce(Session& s) {
         // Frame arrival regularity (only while the stream is actually running)
         if (s.lastFrameArrival > 0 && wantVisible && s.inRate.rate(tNow) >= 20.0) s.quality.addFrameInterval((tNow - s.lastFrameArrival) * 1000.0);
         s.lastFrameArrival = tNow;
+        s.concealedSinceFrame = false;
         s.hdrInput = frame.hdr;
         const int cropW = rw(frame.crop), cropH = rh(frame.crop);
         if (cropW < 16 || cropH < 16 || !wantVisible) {
@@ -638,6 +649,18 @@ void Engine::loopOnce(Session& s) {
         s.presenter.setVisible(false);
         s.cursor.deactivate();
         s.wasVisible = false;
+    } else if (concealArmed && wantVisible && tNow >= concealAt) {
+        // The stream frame is late: show the current motion continued by half a frame
+        // instead of a frozen picture. Real frames are never held back for this.
+        s.concealedSinceFrame = true;
+        if (s.pipeline.extrapolate(0.5f, nullptr)) {
+            s.presenter.waitForFrameSlot(4);
+            s.pipeline.present(s.presenter.backBufferRtv(), s.presenter.width(), s.presenter.height(), s.plan.dst, true, s.presented * 2 + 1, false);
+            if (SUCCEEDED(s.presenter.present(0))) {
+                ++s.concealed;
+                s.outRate.tick(qpcSeconds());
+            }
+        }
     }
 
     // ---- Timings, analysis, Auto Mode ------------------------------------------
@@ -740,6 +763,7 @@ void Engine::loopOnce(Session& s) {
         st.droppedFrames = s.capture ? s.capture->droppedFrames() : 0;
         st.presentedFrames = s.presented;
         st.interpolatedFrames = s.interpolated;
+        st.concealedFrames = s.concealed;
         st.tier = s.automode.tier();
         st.tierName = tierName(st.tier);
         EffectiveConfig ec = resolveConfig(s.cfg.enhancement, st.tier, s.cfg.autoMode);

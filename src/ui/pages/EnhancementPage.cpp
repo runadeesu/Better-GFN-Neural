@@ -28,7 +28,7 @@ bool drawEnhancementEditor(EnhancementSettings& e, const char* scope) {
             e.upscale = UpscaleMode(v);
             changed = true;
         }
-        textWrappedDim(tr("Quality = Neural SR (L)   Balanced = Neural SR (S)   Performance = Lanczos-AR (non-neural)   Native = no upscaling"));
+        textWrappedDim(tr("Quality = Neural SR (L)   Balanced = Neural SR (S)   Performance = Neural SR (Tiny, for low-end GPUs)   Native = no upscaling"));
     }
     endCard();
 
@@ -160,6 +160,8 @@ void drawEnhancementPage(PageContext& c) {
                       tr("Monitors GPU time, VRAM, frame rates, refresh rate, GPU load and latency, and continuously picks the best quality tier. When the PC is too slow it lowers quality step by step instead of turning enhancement off.")))
             c.actions.settingsChanged();
         if (toggleRow(tr("Low Latency Mode"), &s.lowLatency, tr("Minimal queueing (1 frame), immediate presentation, tighter latency budget for interpolation.")))
+            c.actions.settingsChanged();
+        if (toggleRow(tr("Stutter smoothing"), &s.stutterSmoothing, tr("When a stream frame arrives late (network hiccup), a motion-continued frame is shown instead of a frozen picture. Real frames are never delayed, so no latency is added.")))
             c.actions.settingsChanged();
         label(tr("Stream resolution"));
         const char* sr[] = {tr("Auto"), tr("Native"), "720p", "1080p", "1440p"};

@@ -41,6 +41,7 @@ struct EngineConfig {
     Preset preset = Preset::Auto;
     PerformancePriority priority = PerformancePriority::Balanced;
     bool lowLatency = true;
+    bool stutterSmoothing = true;
     EnhancementSettings enhancement;
     OutputMode outputMode = OutputMode::Auto;
     OutputResolution outputResolution = OutputResolution::Auto;
@@ -76,6 +77,7 @@ struct EngineStats {
     double addedLatencyMs = 0;  // capture -> present (incl. interpolation hold-back)
     std::array<double, kGpuStageCount> stageMs{};
     uint64_t capturedFrames = 0, droppedFrames = 0, presentedFrames = 0, interpolatedFrames = 0;
+    uint64_t concealedFrames = 0; // late stream frames filled by stutter smoothing
     // Auto Mode
     int tier = 0;
     std::string tierName;

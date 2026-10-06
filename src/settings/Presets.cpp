@@ -17,6 +17,7 @@ const char* toString(UpscalerKind k) {
     case UpscalerKind::None: return "Native (no upscaling)";
     case UpscalerKind::Bilinear: return "Bilinear";
     case UpscalerKind::LanczosAR: return "Fast Reconstruct (Lanczos-AR)";
+    case UpscalerKind::NsrT: return "Neural SR (Tiny)";
     case UpscalerKind::NsrS: return "Neural SR (S)";
     case UpscalerKind::NsrL: return "Neural SR (L)";
     }
@@ -59,14 +60,15 @@ EffectiveConfig resolveConfig(const EnhancementSettings& e, int tier, bool autoM
     c.tier = tier;
 
     // --- Upscaler ---------------------------------------------------------
-    static const UpscalerKind tierUpscaler[kTierCount] = {UpscalerKind::LanczosAR, UpscalerKind::LanczosAR, UpscalerKind::LanczosAR, UpscalerKind::NsrS,
-                                                          UpscalerKind::NsrS,      UpscalerKind::NsrL,      UpscalerKind::NsrL};
+    // Tiers 1-2 use the single-pass NSR-T so that low-end / integrated GPUs still get AI reconstruction.
+    static const UpscalerKind tierUpscaler[kTierCount] = {UpscalerKind::LanczosAR, UpscalerKind::NsrT, UpscalerKind::NsrT, UpscalerKind::NsrS,
+                                                          UpscalerKind::NsrS,      UpscalerKind::NsrL, UpscalerKind::NsrL};
     UpscalerKind wanted = tierUpscaler[tier];
     switch (e.upscale) {
     case UpscaleMode::Auto: wanted = tierUpscaler[tier]; break;
     case UpscaleMode::Quality: wanted = UpscalerKind::NsrL; break;
     case UpscaleMode::Balanced: wanted = UpscalerKind::NsrS; break;
-    case UpscaleMode::Performance: wanted = UpscalerKind::LanczosAR; break;
+    case UpscaleMode::Performance: wanted = UpscalerKind::NsrT; break;
     case UpscaleMode::Native: wanted = UpscalerKind::None; break;
     }
     if (autoMode && e.upscale != UpscaleMode::Auto && e.upscale != UpscaleMode::Native) {
@@ -159,7 +161,8 @@ EffectiveConfig resolveConfig(const EnhancementSettings& e, int tier, bool autoM
     // --- Optical flow / interpolation ---------------------------------------
     c.frameGenMode = e.frameGen;
     int flow = 0;
-    if (tier >= 3 && (c.temporal > 0 || c.motionDeblur)) flow = tier >= 5 ? 2 : 1;
+    // Temporal accumulation always gets motion vectors (without them fast motion would ghost)
+    if (tier >= 2 && (c.temporal > 0 || c.motionDeblur)) flow = tier >= 5 ? 2 : 1;
     if (e.frameGen != FrameGenMode::Off) flow = std::max(flow, tier >= 5 ? 2 : 1);
     c.flowQuality = flow;
     return c;
@@ -259,7 +262,7 @@ int estimateTierForGpu(unsigned vendorId, const std::string& gpuName, double vra
         if (g >= 1600 && g < 1700) return 3;
         if (g >= 1070 && g < 1100) return 3;
         if (g >= 1060 && g < 1070) return 2;
-        return 1;
+        return 2; // GTX 10/9 series and older still run NSR-T
     }
     if (vendorId == 0x1002) {
         int m = modelNumberAfter(n, "rx ");
@@ -268,8 +271,8 @@ int estimateTierForGpu(unsigned vendorId, const std::string& gpuName, double vra
         if (m >= 6000 && m < 7000) return (m % 1000) >= 700 ? 5 : 4;
         if (m >= 5000 && m < 6000) return (m % 1000) >= 600 ? 4 : 3;
         if (m >= 400 && m < 600) return 2;
-        if (n.find("780m") != std::string::npos || n.find("890m") != std::string::npos || n.find("880m") != std::string::npos) return 2;
-        return 1;
+        if (n.find("780m") != std::string::npos || n.find("890m") != std::string::npos || n.find("880m") != std::string::npos) return 3;
+        return 2;
     }
     if (vendorId == 0x8086) {
         if (n.find("arc") != std::string::npos) {
@@ -278,8 +281,10 @@ int estimateTierForGpu(unsigned vendorId, const std::string& gpuName, double vra
             if (n.find(" a3") != std::string::npos) return 2;
             return 2; // integrated Arc (Meteor/Lunar/Arrow Lake)
         }
-        if (n.find("iris") != std::string::npos) return 1;
-        return 0;
+        // Integrated graphics start with the single-pass NSR-T (tiers 1-2);
+        // Auto Mode drops to tier 0 if even that does not fit the frame budget.
+        if (n.find("iris") != std::string::npos) return 2;
+        return 1;
     }
     if (vramGB >= 8) return 4;
     if (vramGB >= 4) return 3;

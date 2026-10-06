@@ -1,0 +1,137 @@
+dataset: 65 train images, 7 validation images, 5 fonts
+model nsr_t_x2: C=4 hidden=1 params=336
+iter 500/60000 loss 0.02024 lr 2.00e-03  3.6s
+iter 1000/60000 loss 0.02046 lr 2.00e-03  7.0s
+iter 1500/60000 loss 0.02008 lr 2.00e-03  10.6s
+iter 2000/60000 loss 0.01988 lr 1.99e-03  14.4s
+iter 2500/60000 loss 0.01980 lr 1.99e-03  18.0s
+iter 3000/60000 loss 0.01947 lr 1.99e-03  21.6s
+iter 3500/60000 loss 0.01955 lr 1.98e-03  24.9s
+iter 4000/60000 loss 0.02000 lr 1.98e-03  28.0s
+iter 4500/60000 loss 0.02021 lr 1.97e-03  31.7s
+iter 5000/60000 loss 0.01929 lr 1.97e-03  35.1s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.327
+iter 5500/60000 loss 0.01994 lr 1.96e-03  38.6s
+iter 6000/60000 loss 0.01895 lr 1.95e-03  42.7s
+iter 6500/60000 loss 0.01905 lr 1.94e-03  46.4s
+iter 7000/60000 loss 0.02011 lr 1.93e-03  50.0s
+iter 7500/60000 loss 0.01921 lr 1.92e-03  53.8s
+iter 8000/60000 loss 0.02012 lr 1.91e-03  57.8s
+iter 8500/60000 loss 0.01936 lr 1.90e-03  61.3s
+iter 9000/60000 loss 0.01859 lr 1.89e-03  64.5s
+iter 9500/60000 loss 0.01918 lr 1.88e-03  67.6s
+iter 10000/60000 loss 0.01913 lr 1.87e-03  70.9s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.365
+iter 10500/60000 loss 0.01851 lr 1.85e-03  74.4s
+iter 11000/60000 loss 0.01882 lr 1.84e-03  77.3s
+iter 11500/60000 loss 0.01924 lr 1.83e-03  80.9s
+iter 12000/60000 loss 0.01917 lr 1.81e-03  84.4s
+iter 12500/60000 loss 0.01938 lr 1.80e-03  87.6s
+iter 13000/60000 loss 0.01961 lr 1.78e-03  91.2s
+iter 13500/60000 loss 0.01975 lr 1.76e-03  94.9s
+iter 14000/60000 loss 0.01911 lr 1.75e-03  98.5s
+iter 14500/60000 loss 0.01895 lr 1.73e-03  102.1s
+iter 15000/60000 loss 0.01920 lr 1.71e-03  105.8s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.396
+iter 15500/60000 loss 0.01958 lr 1.69e-03  110.0s
+iter 16000/60000 loss 0.01926 lr 1.67e-03  114.0s
+iter 16500/60000 loss 0.01961 lr 1.65e-03  118.1s
+iter 17000/60000 loss 0.01934 lr 1.63e-03  122.5s
+iter 17500/60000 loss 0.01927 lr 1.61e-03  126.4s
+iter 18000/60000 loss 0.01984 lr 1.59e-03  130.1s
+iter 18500/60000 loss 0.01907 lr 1.57e-03  133.9s
+iter 19000/60000 loss 0.02056 lr 1.55e-03  137.5s
+iter 19500/60000 loss 0.01918 lr 1.53e-03  140.9s
+iter 20000/60000 loss 0.01920 lr 1.51e-03  144.6s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.399
+iter 20500/60000 loss 0.01937 lr 1.48e-03  148.5s
+iter 21000/60000 loss 0.01938 lr 1.46e-03  152.3s
+iter 21500/60000 loss 0.01895 lr 1.44e-03  156.3s
+iter 22000/60000 loss 0.01869 lr 1.41e-03  160.3s
+iter 22500/60000 loss 0.01956 lr 1.39e-03  164.1s
+iter 23000/60000 loss 0.01888 lr 1.36e-03  167.4s
+iter 23500/60000 loss 0.01908 lr 1.34e-03  171.2s
+iter 24000/60000 loss 0.01908 lr 1.32e-03  175.0s
+iter 24500/60000 loss 0.01934 lr 1.29e-03  178.5s
+iter 25000/60000 loss 0.01900 lr 1.27e-03  182.4s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.401
+iter 25500/60000 loss 0.01923 lr 1.24e-03  186.0s
+iter 26000/60000 loss 0.01900 lr 1.22e-03  189.2s
+iter 26500/60000 loss 0.01950 lr 1.19e-03  192.7s
+iter 27000/60000 loss 0.01878 lr 1.16e-03  196.3s
+iter 27500/60000 loss 0.01975 lr 1.14e-03  199.7s
+iter 28000/60000 loss 0.01924 lr 1.11e-03  203.2s
+iter 28500/60000 loss 0.01875 lr 1.09e-03  206.8s
+iter 29000/60000 loss 0.01940 lr 1.06e-03  210.2s
+iter 29500/60000 loss 0.01866 lr 1.04e-03  213.6s
+iter 30000/60000 loss 0.01920 lr 1.01e-03  216.8s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.408
+iter 30500/60000 loss 0.01928 lr 9.84e-04  220.4s
+iter 31000/60000 loss 0.01884 lr 9.58e-04  223.7s
+iter 31500/60000 loss 0.01919 lr 9.32e-04  226.7s
+iter 32000/60000 loss 0.01871 lr 9.07e-04  229.9s
+iter 32500/60000 loss 0.01898 lr 8.81e-04  233.1s
+iter 33000/60000 loss 0.01919 lr 8.55e-04  236.3s
+iter 33500/60000 loss 0.01910 lr 8.30e-04  239.7s
+iter 34000/60000 loss 0.01949 lr 8.04e-04  243.3s
+iter 34500/60000 loss 0.02039 lr 7.79e-04  246.8s
+iter 35000/60000 loss 0.01901 lr 7.54e-04  250.2s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.410
+iter 35500/60000 loss 0.01938 lr 7.29e-04  253.9s
+iter 36000/60000 loss 0.01898 lr 7.04e-04  257.5s
+iter 36500/60000 loss 0.01936 lr 6.80e-04  260.8s
+iter 37000/60000 loss 0.01884 lr 6.55e-04  264.1s
+iter 37500/60000 loss 0.01961 lr 6.31e-04  267.4s
+iter 38000/60000 loss 0.01916 lr 6.07e-04  271.0s
+iter 38500/60000 loss 0.01916 lr 5.84e-04  274.3s
+iter 39000/60000 loss 0.01877 lr 5.61e-04  277.8s
+iter 39500/60000 loss 0.01922 lr 5.38e-04  281.4s
+iter 40000/60000 loss 0.01897 lr 5.15e-04  284.6s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.419
+iter 40500/60000 loss 0.01869 lr 4.93e-04  287.9s
+iter 41000/60000 loss 0.01934 lr 4.71e-04  291.4s
+iter 41500/60000 loss 0.01974 lr 4.49e-04  294.7s
+iter 42000/60000 loss 0.01909 lr 4.28e-04  298.0s
+iter 42500/60000 loss 0.01864 lr 4.07e-04  301.7s
+iter 43000/60000 loss 0.01893 lr 3.87e-04  304.9s
+iter 43500/60000 loss 0.01798 lr 3.67e-04  308.5s
+iter 44000/60000 loss 0.01942 lr 3.48e-04  311.8s
+iter 44500/60000 loss 0.01869 lr 3.29e-04  315.1s
+iter 45000/60000 loss 0.01881 lr 3.10e-04  318.3s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.422
+iter 45500/60000 loss 0.01984 lr 2.92e-04  321.6s
+iter 46000/60000 loss 0.01901 lr 2.74e-04  324.9s
+iter 46500/60000 loss 0.01875 lr 2.57e-04  328.5s
+iter 47000/60000 loss 0.01866 lr 2.41e-04  332.6s
+iter 47500/60000 loss 0.01880 lr 2.25e-04  336.5s
+iter 48000/60000 loss 0.01905 lr 2.09e-04  340.3s
+iter 48500/60000 loss 0.01872 lr 1.94e-04  343.9s
+iter 49000/60000 loss 0.01917 lr 1.80e-04  347.3s
+iter 49500/60000 loss 0.01893 lr 1.66e-04  350.6s
+iter 50000/60000 loss 0.01903 lr 1.53e-04  353.6s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.422
+iter 50500/60000 loss 0.01906 lr 1.40e-04  357.2s
+iter 51000/60000 loss 0.01901 lr 1.28e-04  361.1s
+iter 51500/60000 loss 0.01994 lr 1.16e-04  365.1s
+iter 52000/60000 loss 0.01864 lr 1.06e-04  369.1s
+iter 52500/60000 loss 0.01922 lr 9.54e-05  372.9s
+iter 53000/60000 loss 0.01930 lr 8.58e-05  376.7s
+iter 53500/60000 loss 0.01894 lr 7.68e-05  380.2s
+iter 54000/60000 loss 0.01959 lr 6.85e-05  383.7s
+iter 54500/60000 loss 0.01937 lr 6.08e-05  387.3s
+iter 55000/60000 loss 0.01915 lr 5.37e-05  390.8s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.423
+iter 55500/60000 loss 0.01885 lr 4.74e-05  394.7s
+iter 56000/60000 loss 0.01917 lr 4.16e-05  398.3s
+iter 56500/60000 loss 0.01876 lr 3.66e-05  401.8s
+iter 57000/60000 loss 0.01938 lr 3.22e-05  405.2s
+iter 57500/60000 loss 0.01935 lr 2.85e-05  408.6s
+iter 58000/60000 loss 0.01863 lr 2.54e-05  412.1s
+iter 58500/60000 loss 0.01853 lr 2.31e-05  415.9s
+iter 59000/60000 loss 0.01881 lr 2.14e-05  419.7s
+iter 59500/60000 loss 0.01880 lr 2.03e-05  423.9s
+iter 60000/60000 loss 0.01920 lr 2.00e-05  428.0s
+  val(jpeg q60) PSNR-Y: bilinear 28.866  catmull 29.174  nsr 29.426
+final clean PSNR-Y: bilinear 29.956 catmull 30.912 nsr 31.383
+final jpeg  PSNR-Y: bilinear 28.866 catmull 29.174 nsr 29.426
+exported nsr_t_x2

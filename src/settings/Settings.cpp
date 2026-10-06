@@ -342,6 +342,7 @@ std::string settingsToJson(const Settings& s) {
            {"auto_mode", s.autoMode},
            {"preset", s.preset},
            {"low_latency", s.lowLatency},
+           {"stutter_smoothing", s.stutterSmoothing},
            {"output_mode", s.outputMode},
            {"output_resolution", s.outputResolution},
            {"stream_resolution", s.streamResolution},
@@ -394,6 +395,7 @@ bool settingsFromJson(const std::string& text, Settings& out, std::string* error
     getOpt(j, "auto_mode", s.autoMode);
     getOpt(j, "preset", s.preset);
     getOpt(j, "low_latency", s.lowLatency);
+    getOpt(j, "stutter_smoothing", s.stutterSmoothing);
     getOpt(j, "output_mode", s.outputMode);
     getOpt(j, "output_resolution", s.outputResolution);
     getOpt(j, "stream_resolution", s.streamResolution);

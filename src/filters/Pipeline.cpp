@@ -314,7 +314,7 @@ void Pipeline::runUpscale(const PipelineFrameParams& params, ID3D11ShaderResourc
         return;
     }
     if (scale < 1.0) kind = UpscalerKind::LanczosAR; // downscaling path
-    if ((kind == UpscalerKind::NsrS || kind == UpscalerKind::NsrL) && scale < 1.15) kind = UpscalerKind::LanczosAR;
+    if ((kind == UpscalerKind::NsrT || kind == UpscalerKind::NsrS || kind == UpscalerKind::NsrL) && scale < 1.15) kind = UpscalerKind::LanczosAR;
     status_.upscalerUsed = kind;
     up_.ensure(g_.dev, outW, outH, kWork);
 
@@ -329,9 +329,10 @@ void Pipeline::runUpscale(const PipelineFrameParams& params, ID3D11ShaderResourc
     case UpscalerKind::None:
     case UpscalerKind::Bilinear: resample(ShaderId::resample_bilinear_cs, src, inW_, inH_); break;
     case UpscalerKind::LanczosAR: resample(scale >= 1.0 ? ShaderId::resample_up_cs : ShaderId::resample_down_cs, src, inW_, inH_); break;
+    case UpscalerKind::NsrT:
     case UpscalerKind::NsrS:
     case UpscalerKind::NsrL: {
-        NsrModel model = kind == UpscalerKind::NsrL ? NsrModel::Large : NsrModel::Small;
+        NsrModel model = kind == UpscalerKind::NsrL ? NsrModel::Large : (kind == UpscalerKind::NsrS ? NsrModel::Small : NsrModel::Tiny);
         const int hw = inW_ * 2, hh = inH_ * 2;
         if (!nsr_.ensure(g_.dev, inW_, inH_, model)) {
             resample(ShaderId::resample_up_cs, src, inW_, inH_);
@@ -359,6 +360,23 @@ bool Pipeline::interpolate(GpuTimer* timer) {
     ctx->CSSetConstantBuffers(0, 1, cbs);
     ctx->CSSetSamplers(0, 2, samplers);
     interp_.run(g_, final_[curFinal_ ^ 1].srv.Get(), final_[curFinal_].srv.Get(), flow_.flowSrv());
+    if (timer) timer->mark(ctx, GpuStage::Interpolate);
+    return true;
+}
+
+bool Pipeline::extrapolate(float e, GpuTimer* timer) {
+    if (!canExtrapolate()) return false;
+    auto* ctx = g_.ctx;
+    if (!interp_.ensure(g_.dev, geo_.outW, geo_.outH)) return false;
+    gpu::FrameCB cb = cb_;
+    cb.gInterp.x = std::clamp(e, 0.0f, 1.0f);
+    frameCB_.update(ctx, cb);
+    ID3D11Buffer* cbs[1] = {frameCB_.get()};
+    ID3D11SamplerState* samplers[2] = {linear_.Get(), point_.Get()};
+    ctx->CSSetConstantBuffers(0, 1, cbs);
+    ctx->CSSetSamplers(0, 2, samplers);
+    interp_.extrapolate(g_, final_[curFinal_].srv.Get(), flow_.flowSrv());
+    frameCB_.update(ctx, cb_);
     if (timer) timer->mark(ctx, GpuStage::Interpolate);
     return true;
 }

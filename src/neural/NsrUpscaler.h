@@ -8,7 +8,7 @@
 
 namespace bgn {
 
-enum class NsrModel { Small, Large };
+enum class NsrModel { Tiny, Small, Large };
 
 class NsrUpscaler {
 public:

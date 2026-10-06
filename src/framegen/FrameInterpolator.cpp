@@ -13,4 +13,8 @@ void FrameInterpolator::run(const GpuContext& g, ID3D11ShaderResourceView* prevF
     dispatchCompute(g.ctx, g.cs(ShaderId::interp_cs), {prevFinal, curFinal, flow}, {mid_.uav.Get()}, groups(mid_.width, 8), groups(mid_.height, 8));
 }
 
+void FrameInterpolator::extrapolate(const GpuContext& g, ID3D11ShaderResourceView* curFinal, ID3D11ShaderResourceView* flow) {
+    dispatchCompute(g.ctx, g.cs(ShaderId::extrap_cs), {curFinal, flow}, {mid_.uav.Get()}, groups(mid_.width, 8), groups(mid_.height, 8));
+}
+
 } // namespace bgn

@@ -21,6 +21,7 @@ struct NsrModelData {
     int hiddenLayers() const { return int(layers.size()) - 2; }
 };
 
+const NsrModelData& nsrModelT();
 const NsrModelData& nsrModelS();
 const NsrModelData& nsrModelL();
 

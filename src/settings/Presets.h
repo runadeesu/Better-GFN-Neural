@@ -24,7 +24,7 @@ struct PresetPolicy {
 
 PresetPolicy policyFor(Preset preset, bool lowLatencyMode, PerformancePriority priority = PerformancePriority::Balanced);
 
-enum class UpscalerKind { None, Bilinear, LanczosAR, NsrS, NsrL };
+enum class UpscalerKind { None, Bilinear, LanczosAR, NsrT, NsrS, NsrL };
 const char* toString(UpscalerKind k);
 
 struct ColorParams {

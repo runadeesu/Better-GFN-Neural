@@ -7,6 +7,16 @@ namespace bgn {
 #define NSR_ARR(...) std::vector<float>{__VA_ARGS__}
 #define NSR_LAYER(ci, co, W, B) m.layers.push_back(NsrLayer{ci, co, W, B});
 
+const NsrModelData& nsrModelT() {
+    static const NsrModelData model = [] {
+        NsrModelData m;
+        m.name = "nsr_t_x2";
+#include "neural/generated/nsr_t_x2.inc"
+        return m;
+    }();
+    return model;
+}
+
 const NsrModelData& nsrModelS() {
     static const NsrModelData model = [] {
         NsrModelData m;

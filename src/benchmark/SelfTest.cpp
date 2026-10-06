@@ -94,7 +94,7 @@ nlohmann::json testNsr(Ctx& c, NsrModel model, bool& ok) {
     int ow = 0, oh = 0;
     readbackTexture(c.device.device(), c.device.context(), out.tex.Get(), gpu, ow, oh);
     std::vector<float> ref;
-    nsrUpscaleReference(model == NsrModel::Large ? nsrModelL() : nsrModelS(), img, w, h, ref);
+    nsrUpscaleReference(model == NsrModel::Large ? nsrModelL() : (model == NsrModel::Small ? nsrModelS() : nsrModelT()), img, w, h, ref);
     double maxErr = 0, sumErr = 0;
     size_t n = 0;
     for (int y = 0; y < oh; ++y)
@@ -106,10 +106,10 @@ nlohmann::json testNsr(Ctx& c, NsrModel model, bool& ok) {
                 ++n;
             }
     double meanErr = n ? sumErr / double(n) : 1.0;
-    const bool half = c.g.halfPrecision;
+    const bool half = c.g.halfPrecision && model != NsrModel::Tiny; // NSR-T has a single FP32 variant
     const double maxTol = half ? 0.04 : 0.012, meanTol = half ? 0.005 : 0.0015;
     ok = maxErr < maxTol && meanErr < meanTol;
-    j = {{"model", model == NsrModel::Large ? "nsr_l_x2" : "nsr_s_x2"}, {"half_precision", half}, {"max_abs_error", maxErr}, {"mean_abs_error", meanErr},
+    j = {{"model", model == NsrModel::Large ? "nsr_l_x2" : (model == NsrModel::Small ? "nsr_s_x2" : "nsr_t_x2")}, {"half_precision", half && model != NsrModel::Tiny}, {"max_abs_error", maxErr}, {"mean_abs_error", meanErr},
          {"pass", ok}};
     return j;
 }
@@ -164,11 +164,11 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
 
     // ---- NSR shader == trained network ------------------------------------
     BGN_LOG_INFO("SelfTest", "device: {} (software {})", gi.name, gi.software);
-    for (NsrModel m : {NsrModel::Small, NsrModel::Large}) {
-        BGN_LOG_INFO("SelfTest", "NSR {} vs CPU reference", m == NsrModel::Large ? "L" : "S");
+    for (NsrModel m : {NsrModel::Tiny, NsrModel::Small, NsrModel::Large}) {
+        BGN_LOG_INFO("SelfTest", "NSR {} vs CPU reference", m == NsrModel::Large ? "L" : (m == NsrModel::Small ? "S" : "T"));
         bool ok = false;
         nlohmann::json j = testNsr(c, m, ok);
-        if (gi.halfPrecision) {
+        if (gi.halfPrecision && m != NsrModel::Tiny) {
             // Also verify the FP32 variant
             c.g.halfPrecision = false;
             bool ok32 = false;
@@ -306,6 +306,25 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
         bool pass = interpOk && eMid < eBlend * 0.85 && eMid < eRepeat;
         allOk &= pass;
         report["frame_interpolation"] = {{"mae_interpolated", eMid}, {"mae_naive_blend", eBlend}, {"mae_frame_repeat", eRepeat}, {"pass", pass}};
+
+        // Stutter smoothing: half a frame of extrapolation beyond f1 must be closer
+        // to the true picture at that time than repeating (freezing) f1.
+        BGN_LOG_INFO("SelfTest", "stutter smoothing (extrapolation)");
+        std::vector<float> ex, truth;
+        pipeline.resetHistory();
+        processSynthetic(c, pipeline, scene, params, w, h, t0, pan);
+        processSynthetic(c, pipeline, scene, params, w, h, t0 + dt, pan);
+        bool exOk = pipeline.extrapolate(0.5f, nullptr);
+        pipeline.midSrv()->GetResource(&midRes);
+        midRes.As(&midTex);
+        readbackTexture(c.device.device(), c.device.context(), midTex.Get(), ex, ww, hh);
+        pipeline.resetHistory();
+        processSynthetic(c, pipeline, scene, params, w, h, t0 + dt * 1.5f, pan);
+        readbackTexture(c.device.device(), c.device.context(), pipeline.finalTexture(), truth, ww, hh);
+        double eEx = mae(ex, truth), eFreeze = mae(f1, truth);
+        bool exPass = exOk && eEx < eFreeze * 0.8;
+        allOk &= exPass;
+        report["stutter_smoothing"] = {{"mae_extrapolated", eEx}, {"mae_frozen_frame", eFreeze}, {"pass", exPass}};
     }
 
     // ---- Temporal anti-flicker ---------------------------------------------
@@ -344,11 +363,11 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
         // Ghosting: on a fast pan the temporally reconstructed frame must stay close
         // to the current frame (a lagging/ghosting result drifts towards the previous one).
         BGN_LOG_INFO("SelfTest", "temporal ghosting");
-        auto panned = [&](bool temporal, std::vector<float>& last, std::vector<float>& beforeLast) {
+        auto panned = [&](bool temporal, int tier, std::vector<float>& last, std::vector<float>& beforeLast) {
             EnhancementSettings e = plainSettings();
             e.temporal = {temporal, false, 0.8f};
             PipelineFrameParams params;
-            params.cfg = resolveConfig(e, 4, false);
+            params.cfg = resolveConfig(e, tier, false);
             pipeline.resetHistory();
             int ww, hh;
             for (int f = 0; f < 10; ++f) {
@@ -357,14 +376,18 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
             }
             readbackTexture(c.device.device(), c.device.context(), pipeline.finalTexture(), last, ww, hh);
         };
-        std::vector<float> onLast, onPrev, offLast, offPrev;
-        panned(true, onLast, onPrev);
-        panned(false, offLast, offPrev);
-        double deviation = mae(onLast, offLast);    // temporal vs. untouched current frame
-        double motionDelta = mae(offLast, offPrev); // how different consecutive frames are
-        bool ghostPass = deviation < motionDelta * 0.25;
-        allOk &= ghostPass;
-        report["temporal_ghosting"] = {{"deviation_from_current", deviation}, {"consecutive_frame_delta", motionDelta}, {"pass", ghostPass}};
+        // Tier 4 (mid-range) and tier 2 (low-end GPUs: NSR-T, fast flow)
+        for (int tier : {4, 2}) {
+            std::vector<float> onLast, onPrev, offLast, offPrev;
+            panned(true, tier, onLast, onPrev);
+            panned(false, tier, offLast, offPrev);
+            double deviation = mae(onLast, offLast);    // temporal vs. untouched current frame
+            double motionDelta = mae(offLast, offPrev); // how different consecutive frames are
+            bool ghostPass = deviation < motionDelta * 0.25;
+            allOk &= ghostPass;
+            report[tier == 4 ? "temporal_ghosting" : "temporal_ghosting_low_end"] = {
+                {"tier", tier}, {"deviation_from_current", deviation}, {"consecutive_frame_delta", motionDelta}, {"pass", ghostPass}};
+        }
     }
 
     // ---- Visual styles and accessibility filters ---------------------------

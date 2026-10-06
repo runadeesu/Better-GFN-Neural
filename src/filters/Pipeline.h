@@ -68,6 +68,10 @@ public:
     // Generates the interpolated frame between the previous and current output.
     bool interpolate(GpuTimer* timer);
     bool canInterpolate() const { return prevFinalValid_ && flow_.valid(); }
+    // Stutter concealment: frame |e| (0..1) of a frame ahead of the current output,
+    // continuing the measured motion. Presented with present(..., interpolated = true).
+    bool extrapolate(float e, GpuTimer* timer);
+    bool canExtrapolate() const { return flow_.valid() && final_[curFinal_].valid(); }
 
     // Draws the current output (or interpolated frame) into a render target.
     void present(ID3D11RenderTargetView* rtv, int bbW, int bbH, const RECT& dst, bool interpolated, uint64_t presentIndex, bool ditherHdr);

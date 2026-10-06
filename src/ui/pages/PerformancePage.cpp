@@ -55,6 +55,7 @@ void drawPerformancePage(PageContext& c) {
         kv(tr("Frame Interpolation"), std::format("{} \xE2\x80\x94 {}", tr(toString(e.frameGenMode)),
                                                     e.frameGenActive ? tr("active (2x)") : (e.frameGenBeneficial ? tr("standby") : tr("not beneficial at this refresh rate"))));
         kv(tr("Dropped frames"), std::format("{}", e.droppedFrames));
+        kv(tr("Stutter smoothing"), trf("{} late frames filled", e.concealedFrames));
         kv(tr("Stream quality"), e.streamQualityValid ? trf("{:.0f} ({})  \xC2\xB7  compression {:.0f}%  \xC2\xB7  stutter {:.1f}%{}", e.streamQuality,
                                                             tr(qualityLabel(e.streamQuality)), e.blockiness * 100.0, e.stutter * 100.0,
                                                             e.adaptiveCleanupActive ? std::string("  \xC2\xB7  ") + tr("adaptive cleanup active") : std::string())

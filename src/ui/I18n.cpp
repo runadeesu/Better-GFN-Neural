@@ -77,8 +77,8 @@ const std::unordered_map<std::string_view, const char*>& japanese() {
         {"Stream resolution", "ストリーム解像度"},
         {"Real-time CNN (trained in-house) reconstructs detail when the stream is lower resolution than your display. Not DLSS: GeForce NOW does not expose game motion vectors to local apps.",
          "本プロジェクトで学習したリアルタイム CNN が、ストリームがディスプレイより低解像度のときにディテールを再構成します。DLSS ではありません（GeForce NOW はゲームのモーションベクトルをローカルアプリに提供しないため）。"},
-        {"Quality = Neural SR (L)   Balanced = Neural SR (S)   Performance = Lanczos-AR (non-neural)   Native = no upscaling",
-         "クオリティ = Neural SR (L)　バランス = Neural SR (S)　パフォーマンス = Lanczos-AR（非ニューラル）　ネイティブ = アップスケールなし"},
+        {"Quality = Neural SR (L)   Balanced = Neural SR (S)   Performance = Neural SR (Tiny, for low-end GPUs)   Native = no upscaling",
+         "クオリティ = Neural SR (L)　バランス = Neural SR (S)　パフォーマンス = Neural SR（軽量・低スペック GPU 向け）　ネイティブ = アップスケールなし"},
         {"Stream Compression Cleanup", "ストリーム圧縮ノイズ除去"},
         {"Removes macroblocking, banding, mosquito noise and dark-scene artifacts from the video stream.",
          "映像ストリームのマクロブロック、バンディング、モスキートノイズ、暗いシーンのノイズを除去します。"},
@@ -176,6 +176,12 @@ const std::unordered_map<std::string_view, const char*>& japanese() {
         {"GPU time", "GPU 時間"},
         {"{} min", "{} 分"},
         {"{} h {} min", "{} 時間 {} 分"},
+        {"Low-spec AI", "低スペック向け軽量 AI"},
+        // Stutter smoothing
+        {"Stutter smoothing", "カクつき補完"},
+        {"When a stream frame arrives late (network hiccup), a motion-continued frame is shown instead of a frozen picture. Real frames are never delayed, so no latency is added.",
+         "通信の揺らぎでストリームのフレームが遅れたとき、止まった映像の代わりに動きを予測して続けたフレームを表示します。本来のフレームは一切待たせないため、遅延は増えません。"},
+        {"{} late frames filled", "遅れたフレームを {} 回補完"},
         // Screenshots
         {"Take screenshot", "スクリーンショット"},
         {"Screenshot saved", "スクリーンショットを保存しました"},
@@ -295,6 +301,7 @@ const std::unordered_map<std::string_view, const char*>& japanese() {
         {"Native (no upscaling)", "ネイティブ（アップスケールなし）"},
         {"Bilinear", "バイリニア"},
         {"Fast Reconstruct (Lanczos-AR)", "高速再構成（Lanczos-AR）"},
+        {"Neural SR (Tiny)", "Neural SR（軽量）"},
         // Engine state / errors (composed by the engine, translated with trText)
         {"Starting", "開始中"},
         {"Preparing", "準備中"},
