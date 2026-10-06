@@ -5,7 +5,7 @@
 // gPassI = region origin x, y (multiples of 8), region w, h
 #include "common.hlsli"
 
-Texture2D<float4> gSrc : register(t0);
+Texture2D<float4> gQualitySrc : register(t0);
 RWByteAddressBuffer gOut : register(u0);
 
 groupshared uint sB, sBn, sI, sIn;
@@ -22,9 +22,9 @@ void main(uint3 id : SV_DispatchThreadID, uint gi : SV_GroupIndex) {
     int2 p = int2(gPassI.xy) + int2(id.xy);
     int2 size = int2(gIn.xy);
     if (all(id.xy < gPassI.zw) && all(p + 1 < size)) {
-        float y0 = lumaY(gSrc.Load(int3(p, 0)).rgb);
-        float yx = lumaY(gSrc.Load(int3(p + int2(1, 0), 0)).rgb);
-        float yy = lumaY(gSrc.Load(int3(p + int2(0, 1), 0)).rgb);
+        float y0 = lumaY(gQualitySrc.Load(int3(p, 0)).rgb);
+        float yx = lumaY(gQualitySrc.Load(int3(p + int2(1, 0), 0)).rgb);
+        float yy = lumaY(gQualitySrc.Load(int3(p + int2(0, 1), 0)).rgb);
         // Clip so that real edges do not dominate the averages
         uint qx = uint(min(abs(yx - y0), 0.08) * 4096.0);
         uint qy = uint(min(abs(yy - y0), 0.08) * 4096.0);

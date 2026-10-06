@@ -68,6 +68,9 @@ if (Test-Path $report) {
 }
 $shots = @(Get-ChildItem (Join-Path $data "screenshots") -Filter "*.png" -ErrorAction SilentlyContinue)
 Check "screenshot_saved" (($shots | Where-Object { $_.Name -like "Cyberpunk 2077_*" }).Count -ge 3) "files: $(($shots | ForEach-Object { $_.Name }) -join ', ')"
+$histFile = Join-Path $data "history.json"
+$histText = if (Test-Path $histFile) { Get-Content $histFile -Raw -Encoding utf8 } else { "" }
+Check "history_recorded" ($histText -match "Cyberpunk 2077") "history.json $(if ($histText) { ($histText | ConvertFrom-Json).sessions.Count } else { 0 }) sessions"
 Check "settings_saved" (Test-Path (Join-Path $data "settings.json")) "settings.json"
 Check "log_written" ((Get-ChildItem (Join-Path $data "logs") -Filter "*.log" -ErrorAction SilentlyContinue).Count -ge 1) "logs folder"
 $logText = (Get-ChildItem (Join-Path $data "logs") -Filter "*.log" | Get-Content -Raw)
@@ -107,12 +110,16 @@ Check "corrupt_settings_kept_for_diagnostics" (Test-Path (Join-Path $sdata "sett
 # ---------------------------------------------------------------- 4. UI screenshots
 $shots = Join-Path $OutDir "screenshots"
 New-Item -ItemType Directory -Force -Path $shots | Out-Null
-$p = Start-Process -FilePath $Exe -ArgumentList @("--automation", "screenshots", "--seconds", "3", "--data-dir", "`"$(Join-Path $OutDir 'data_shots')`"", "--output", "`"$(Join-Path $shots 'report.json')`"") -PassThru
+# Show the sessions recorded by the detection run on the History page
+$shotData = Join-Path $OutDir "data_shots"
+New-Item -ItemType Directory -Force -Path $shotData | Out-Null
+if (Test-Path $histFile) { Copy-Item $histFile (Join-Path $shotData "history.json") -Force }
+$p = Start-Process -FilePath $Exe -ArgumentList @("--automation", "screenshots", "--seconds", "3", "--data-dir", "`"$shotData`"", "--output", "`"$(Join-Path $shots 'report.json')`"") -PassThru
 $p.WaitForExit(120000) | Out-Null
 $pngs = Get-ChildItem $shots -Filter "*.png" -ErrorAction SilentlyContinue
-Check "ui_screenshots" ($pngs.Count -ge 24) "png files: $($pngs.Count) (English, Japanese, Japanese + English)"
+Check "ui_screenshots" ($pngs.Count -ge 27) "png files: $($pngs.Count) (English, Japanese, Japanese + English)"
 $jaShots = @($pngs | Where-Object { $_.Name -like "*_ja.png" })
-Check "ui_screenshots_japanese" ($jaShots.Count -ge 8) "Japanese png files: $($jaShots.Count)"
+Check "ui_screenshots_japanese" ($jaShots.Count -ge 9) "Japanese png files: $($jaShots.Count)"
 
 $results | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $OutDir "integration_results.json")
 if ($failures.Count -gt 0) {

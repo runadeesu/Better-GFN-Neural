@@ -370,8 +370,8 @@ void UiApp::drawSidebar(float height) {
         const char* label;
         Icon icon;
     } items[] = {{Page::Home, "Home", Icon::Home},          {Page::Enhancement, "Enhancement", Icon::Sliders}, {Page::Display, "Display", Icon::Monitor},
-                 {Page::Games, "Games", Icon::Gamepad},     {Page::Performance, "Performance", Icon::Chart},   {Page::Benchmark, "Benchmark", Icon::Gauge},
-                 {Page::Settings, "Settings", Icon::Gear}};
+                 {Page::Games, "Games", Icon::Gamepad},     {Page::Performance, "Performance", Icon::Chart},   {Page::History, "History", Icon::Clock},
+                 {Page::Benchmark, "Benchmark", Icon::Gauge}, {Page::Settings, "Settings", Icon::Gear}};
     float y = titleHeight_ + 18 * s;
     for (const auto& it : items) {
         ImGui::SetCursorPos(ImVec2(12 * s, y));
@@ -451,6 +451,7 @@ void UiApp::buildUi(float width, float height) {
     case Page::Display: drawDisplayPage(ctx); break;
     case Page::Games: drawGamesPage(ctx); break;
     case Page::Performance: drawPerformancePage(ctx); break;
+    case Page::History: drawHistoryPage(ctx); break;
     case Page::Benchmark: drawBenchmarkPage(ctx); break;
     case Page::Settings: drawSettingsPage(ctx); break;
     case Page::Count: break;

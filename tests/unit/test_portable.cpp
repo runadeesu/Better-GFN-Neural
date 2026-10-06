@@ -21,6 +21,7 @@
 #include "settings/Settings.h"
 #include "settings/SettingsStore.h"
 #include "telemetry/RollingStats.h"
+#include "telemetry/SessionHistory.h"
 #include "telemetry/StreamQuality.h"
 #include "ui/I18n.h"
 
@@ -835,6 +836,60 @@ TEST_CASE("image_ops_screenshots") {
     CHECK_EQ(screenshotBaseName("", t).rfind("GeForce NOW_", 0), size_t(0));
     std::string longName(200, 'x');
     CHECK(screenshotBaseName(longName, t).size() < 90);
+}
+
+TEST_CASE("session_history") {
+    SessionRecorder rec;
+    rec.begin("Cyberpunk 2077", 1700000000);
+    for (int i = 0; i < 40; ++i) {
+        SessionSample s;
+        s.inputFps = 60;
+        s.outputFps = i < 30 ? 120 : 60;
+        s.gpuMs = 4;
+        s.latencyMs = 9;
+        s.quality = i < 10 ? -1 : 80;
+        s.tier = i < 30 ? 5 : 3;
+        s.upscaler = "Neural SR (L)";
+        s.frameGen = i < 30;
+        s.droppedFrames = 100 + i;
+        rec.addSample(s, 1.0);
+    }
+    SessionRecord r;
+    CHECK(rec.finish(r));
+    CHECK(!rec.active());
+    CHECK_EQ(r.game, std::string("Cyberpunk 2077"));
+    CHECK_NEAR(r.durationSec, 40.0, 1e-9);
+    CHECK_NEAR(r.avgOutputFps, 105.0, 1e-9);
+    CHECK_NEAR(r.avgQuality, 80.0, 1e-9);
+    CHECK_EQ(r.dominantTier, 5);
+    CHECK_NEAR(r.frameGenShare, 0.75, 1e-9);
+    CHECK_EQ(r.droppedFrames, uint64_t(39));
+    // short sessions are not stored
+    rec.begin("Fortnite", 1700001000);
+    rec.addSample(SessionSample{}, 1.0);
+    SessionRecord shortOne;
+    CHECK(!rec.finish(shortOne));
+
+    std::vector<SessionRecord> h;
+    appendHistory(h, r);
+    SessionRecord f = r;
+    f.game = "Fortnite, \"Battle\"";
+    f.durationSec = 100;
+    f.avgQuality = -1;
+    appendHistory(h, f);
+    std::vector<SessionRecord> back;
+    CHECK(historyFromJson(historyToJson(h), back));
+    CHECK(back == h);
+    CHECK(!historyFromJson("{", back));
+    std::string csv = historyToCsv(h);
+    CHECK(csv.rfind("\xEF\xBB\xBF", 0) == 0);
+    CHECK(csv.find("\"Fortnite, \"\"Battle\"\"\"") != std::string::npos);
+    CHECK(csv.find("Cyberpunk 2077,2023-11-14") != std::string::npos);
+    auto sum = summarizeHistory(h);
+    CHECK_EQ(sum.size(), size_t(2));
+    CHECK(sum[0].totalSec >= sum[1].totalSec);
+    for (int i = 0; i < 600; ++i) appendHistory(h, r);
+    CHECK_EQ(h.size(), kMaxHistoryRecords);
 }
 
 TEST_CASE("command_line") {

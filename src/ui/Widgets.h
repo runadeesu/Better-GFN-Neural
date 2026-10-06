@@ -9,7 +9,7 @@
 
 namespace bgn::ui {
 
-enum class Icon { Home, Sliders, Monitor, Gamepad, Chart, Gauge, Gear, Play, Pause, Check, Spark, Bolt, Cpu, Close, Minimize, Info, Warning };
+enum class Icon { Home, Sliders, Monitor, Gamepad, Chart, Gauge, Gear, Play, Pause, Check, Spark, Bolt, Cpu, Close, Minimize, Info, Warning, Clock };
 
 void drawIcon(ImDrawList* dl, Icon icon, ImVec2 center, float size, ImU32 color);
 

@@ -12,6 +12,7 @@
 #include "platform/SystemMonitor.h"
 #include "renderer/GpuDevice.h"
 #include "settings/Settings.h"
+#include "telemetry/SessionHistory.h"
 
 namespace bgn {
 
@@ -42,6 +43,8 @@ struct UiModel {
     std::string launchError;
     bool awaitingManualStart = false; // auto start disabled: a game is ready to be enhanced
     std::string screenshotFolder;     // resolved folder (UTF-8)
+    std::vector<SessionRecord> history; // oldest first
+    std::string historyExport;          // path of the last CSV export
 };
 
 struct UiActions {
@@ -62,6 +65,8 @@ struct UiActions {
     std::function<void()> startEnhancement;          // manual start when auto start is disabled
     std::function<void()> takeScreenshot;
     std::function<void()> openScreenshots;
+    std::function<void()> exportHistory;
+    std::function<void()> clearHistory;
 };
 
 } // namespace bgn

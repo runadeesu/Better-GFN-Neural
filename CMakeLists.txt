@@ -40,6 +40,7 @@ add_library(bgn_portable STATIC
     src/automode/AutoModeController.cpp
     src/filters/ContentResolution.cpp
     src/telemetry/StreamQuality.cpp
+    src/telemetry/SessionHistory.cpp
     src/media/ImageOps.cpp
     src/core/StbImpl.cpp
     src/neural/NsrReference.cpp
@@ -97,6 +98,7 @@ if(WIN32)
         src/ui/pages/GamesPage.cpp
         src/ui/pages/PerformancePage.cpp
         src/ui/pages/BenchmarkPage.cpp
+        src/ui/pages/HistoryPage.cpp
         src/ui/pages/SettingsPage.cpp
         src/app/Application.cpp)
     add_dependencies(bgn_win bgn_shaders)

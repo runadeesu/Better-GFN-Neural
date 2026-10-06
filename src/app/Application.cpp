@@ -67,6 +67,14 @@ bool Application::init() {
         SettingsLoadResult lr = store_->load(settings_);
         if (!lr.message.empty()) model_.notice = lr.message;
     }
+    {
+        std::ifstream hf(paths_.dataDir / L"history.json", std::ios::binary);
+        if (hf) {
+            std::string text((std::istreambuf_iterator<char>(hf)), std::istreambuf_iterator<char>());
+            if (!historyFromJson(text, history_)) BGN_LOG_WARN("App", "history.json could not be read; starting a new history");
+        }
+        model_.history = history_;
+    }
     if (!cmd_.logLevel.empty()) parseLogLevel(cmd_.logLevel, settings_.logLevel);
     Log::setLevel(settings_.logLevel);
     applyLanguage();
@@ -166,6 +174,35 @@ void Application::setupActions() {
         std::filesystem::create_directories(screenshotFolder(), ec);
         ShellExecuteW(nullptr, L"open", screenshotFolder().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     };
+    actions_.exportHistory = [this] {
+        PWSTR p = nullptr;
+        std::filesystem::path dir = paths_.dataDir;
+        if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &p)) && p) dir = std::filesystem::path(p) / L"Better GFN Neural";
+        if (p) CoTaskMemFree(p);
+        std::error_code ec;
+        std::filesystem::create_directories(dir, ec);
+        std::time_t now = std::time(nullptr);
+        std::tm lt{};
+        localtime_s(&lt, &now);
+        wchar_t name[64];
+        swprintf_s(name, L"history_%04d%02d%02d_%02d%02d%02d.csv", lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec);
+        const std::filesystem::path file = dir / name;
+        std::ofstream f(file, std::ios::binary | std::ios::trunc);
+        f << historyToCsv(history_);
+        f.close();
+        if (f.fail()) {
+            model_.historyExport.clear();
+            return;
+        }
+        model_.historyExport = narrow(file.wstring());
+        const std::wstring args = L"/select,\"" + file.wstring() + L"\"";
+        ShellExecuteW(nullptr, L"open", L"explorer.exe", args.c_str(), nullptr, SW_SHOWNORMAL);
+    };
+    actions_.clearHistory = [this] {
+        history_.clear();
+        model_.history.clear();
+        saveHistory();
+    };
     actions_.cancelBenchmark = [this] { benchCancel_ = true; };
     actions_.applyBenchmark = [this] {
         const BenchmarkResult& r = settings_.benchmark;
@@ -196,6 +233,51 @@ void Application::takeScreenshot() {
     r.baseName = screenshotBaseName(currentGame_.empty() ? std::string("GeForce NOW") : currentGame_, lt);
     r.comparison = settings_.screenshotComparison;
     engine_.requestScreenshot(r);
+}
+
+void Application::saveHistory() {
+    const std::filesystem::path file = paths_.dataDir / L"history.json";
+    const std::filesystem::path tmp = paths_.dataDir / L"history.json.tmp";
+    {
+        std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
+        f << historyToJson(history_);
+        if (!f) return;
+    }
+    std::error_code ec;
+    std::filesystem::rename(tmp, file, ec);
+}
+
+void Application::finishHistorySession() {
+    SessionRecord r;
+    const double minSeconds = cmd_.automation.empty() ? 30.0 : 3.0;
+    if (recorder_.finish(r, minSeconds)) {
+        appendHistory(history_, r);
+        model_.history = history_;
+        saveHistory();
+        BGN_LOG_INFO("App", "session recorded: {:.0f} s, {:.0f} fps", r.durationSec, r.avgOutputFps);
+    }
+}
+
+void Application::sampleHistory(double dt) {
+    const EngineStats& e = model_.engine;
+    if (!settings_.recordHistory) {
+        if (recorder_.active()) finishHistorySession();
+        return;
+    }
+    if (!e.overlayVisible) return; // paused / not focused: the session continues later
+    if (recorder_.active() && recorder_.game() != currentGame_) finishHistorySession();
+    if (!recorder_.active()) recorder_.begin(currentGame_, int64_t(std::time(nullptr)));
+    SessionSample s;
+    s.inputFps = e.inputFps;
+    s.outputFps = e.outputFps;
+    s.gpuMs = e.gpuMsAvg;
+    s.latencyMs = e.addedLatencyMs;
+    s.quality = e.streamQualityValid ? e.streamQuality : -1.0;
+    s.tier = e.tier;
+    s.upscaler = toString(e.upscaler);
+    s.frameGen = e.frameGenActive;
+    s.droppedFrames = e.droppedFrames;
+    recorder_.addSample(s, dt);
 }
 
 void Application::startBenchmark() {
@@ -379,6 +461,7 @@ void Application::pollDetection() {
         currentGame_ = game;
     } else if (st.state != GfnState::Streaming && !currentGame_.empty()) {
         BGN_LOG_INFO("GFN", "game session ended: {}", currentGame_);
+        finishHistorySession();
         currentGame_.clear();
         currentProfile_.clear();
         updateEngine();
@@ -432,7 +515,9 @@ void Application::tick() {
         pollDetection();
     }
     if (now - lastSys_ >= 1.0) {
+        const double dt = lastSys_ > 0 ? now - lastSys_ : 1.0;
         lastSys_ = now;
+        sampleHistory(dt);
         sysmon_.sample();
         SystemSample s = sysmon_.latest();
         engine_.setSystemSample(s);
@@ -523,7 +608,7 @@ int Application::run() {
     // Automation: optional UI screenshots for documentation / visual checks
     if (cmd_.automation == "screenshots" && !cmd_.outputJson.empty()) {
         std::filesystem::path dir = std::filesystem::path(widen(cmd_.outputJson)).parent_path();
-        const char* names[] = {"home", "enhancement", "display", "games", "performance", "benchmark", "settings"};
+        const char* names[] = {"home", "enhancement", "display", "games", "performance", "history", "benchmark", "settings"};
         // English (ui_home.png), Japanese (ui_home_ja.png) and bilingual (ui_home_ja_en.png)
         const std::pair<UiLanguage, const char*> langs[] = {{UiLanguage::English, ""}, {UiLanguage::Japanese, "_ja"}, {UiLanguage::Bilingual, "_ja_en"}};
         for (const auto& [lang, suffix] : langs) {
@@ -547,6 +632,7 @@ void Application::shutdown() {
     benchCancel_ = true;
     if (benchThread_.joinable()) benchThread_.join();
     engine_.stop();
+    finishHistorySession();
     CursorControl::emergencyRestore();
     if (store_ && (dirty_ || true)) store_->save(settings_);
     tray_.destroy();

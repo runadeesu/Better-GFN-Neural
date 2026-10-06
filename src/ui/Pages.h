@@ -6,7 +6,7 @@
 
 namespace bgn::ui {
 
-enum class Page { Home, Enhancement, Display, Games, Performance, Benchmark, Settings, Count };
+enum class Page { Home, Enhancement, Display, Games, Performance, History, Benchmark, Settings, Count };
 
 struct PageContext {
     Settings& settings;
@@ -21,6 +21,7 @@ void drawDisplayPage(PageContext& c);
 void drawGamesPage(PageContext& c);
 void drawPerformancePage(PageContext& c);
 void drawBenchmarkPage(PageContext& c);
+void drawHistoryPage(PageContext& c);
 void drawSettingsPage(PageContext& c);
 
 // First-run overlay. Returns true while it is still shown.

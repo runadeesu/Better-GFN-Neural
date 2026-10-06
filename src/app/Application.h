@@ -15,6 +15,7 @@
 #include "platform/SystemMonitor.h"
 #include "platform/Tray.h"
 #include "settings/SettingsStore.h"
+#include "telemetry/SessionHistory.h"
 #include "ui/UiApp.h"
 
 namespace bgn {
@@ -42,6 +43,9 @@ private:
     void writeAutomationReport();
     std::filesystem::path screenshotFolder() const;
     void takeScreenshot();
+    void sampleHistory(double dt);
+    void finishHistorySession();
+    void saveHistory();
 
     CommandLine cmd_;
     AppPaths paths_;
@@ -68,6 +72,8 @@ private:
     bool notifiedThisSession_ = false;
     bool manualStart_ = false;
     uint64_t lastScreenshotCount_ = 0;
+    SessionRecorder recorder_;
+    std::vector<SessionRecord> history_;
     bool automationShotTaken_ = false;
     HANDLE instanceMutex_ = nullptr;
 

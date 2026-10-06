@@ -125,6 +125,11 @@ void drawIcon(ImDrawList* dl, Icon icon, ImVec2 c, float s, ImU32 col) {
         dl->AddLine(ImVec2(c.x, c.y - h * 0.1f), ImVec2(c.x, c.y + h * 0.45f), col, t * 1.2f);
         dl->AddCircleFilled(ImVec2(c.x, c.y - h * 0.4f), t, col);
         break;
+    case Icon::Clock:
+        dl->AddCircle(c, h * 0.85f, col, 24, t);
+        dl->AddLine(c, ImVec2(c.x, c.y - h * 0.5f), col, t);
+        dl->AddLine(c, ImVec2(c.x + h * 0.4f, c.y + h * 0.15f), col, t);
+        break;
     case Icon::Warning:
         dl->AddTriangle(ImVec2(c.x, c.y - h * 0.85f), ImVec2(c.x - h * 0.9f, c.y + h * 0.7f), ImVec2(c.x + h * 0.9f, c.y + h * 0.7f), col, t);
         dl->AddLine(ImVec2(c.x, c.y - h * 0.3f), ImVec2(c.x, c.y + h * 0.2f), col, t * 1.2f);
