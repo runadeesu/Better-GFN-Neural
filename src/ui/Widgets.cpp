@@ -511,7 +511,9 @@ void statTile(const char* id, const char* labelText, const char* value, const ch
     dl->AddText(lp, col::TextMute, labelText);
     const float labelW = ImGui::CalcTextSize(labelText).x;
     ImGui::PopFont();
-    if (const char* en = englishFor(labelText)) {
+    // The tile id is the English label; use it so the hint matches exactly.
+    const char* en = englishFor(labelText) ? (std::strcmp(id, labelText) != 0 ? id : englishFor(labelText)) : nullptr;
+    if (en) {
         ImGui::PushFont(fonts().regular, kFontLabel - 0.5f);
         if (lp.x + labelW + S(8) + ImGui::CalcTextSize(en).x < p.x + size.x - S(8))
             dl->AddText(ImVec2(lp.x + labelW + S(8), lp.y + S(0.5f)), withAlpha(col::TextMute, 0.75f), en);

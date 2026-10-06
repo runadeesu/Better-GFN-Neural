@@ -337,9 +337,19 @@ const std::unordered_map<std::string_view, const char*>& japanese() {
 // Japanese text -> English original (for the bilingual hints).
 const std::unordered_map<std::string_view, std::string_view>& englishByJapanese() {
     static const std::unordered_map<std::string_view, std::string_view> m = [] {
+        // Several English strings can share one translation ("Output FPS" and the
+        // tile label "OUTPUT FPS"); prefer the normally cased one.
+        auto allCaps = [](std::string_view v) {
+            for (char ch : v)
+                if (ch >= 'a' && ch <= 'z') return false;
+            return true;
+        };
         std::unordered_map<std::string_view, std::string_view> r;
-        for (const auto& [en, ja] : japanese())
-            if (en != ja) r.emplace(ja, en);
+        for (const auto& [en, ja] : japanese()) {
+            if (en == ja) continue;
+            auto [it, inserted] = r.emplace(ja, en);
+            if (!inserted && allCaps(it->second) && !allCaps(en)) it->second = en;
+        }
         return r;
     }();
     return m;
