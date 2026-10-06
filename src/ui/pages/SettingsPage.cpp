@@ -135,9 +135,9 @@ bool drawFirstRun(PageContext& c, float t) {
     ImGui::SetNextWindowPos(vp->Pos);
     ImGui::SetNextWindowSize(vp->Size);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, withAlpha(col::Bg0, 0.88f));
-    ImGui::Begin("##firstrun_dim", nullptr,
-                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus |
-                     ImGuiWindowFlags_NoNav);
+    // (No NoBringToFrontOnFocus here: Dear ImGui inserts such windows at the back,
+    // below the main window. The wizard takes focus every frame to stay on top.)
+    ImGui::Begin("##firstrun_dim", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav);
     ImGui::End();
     ImGui::PopStyleColor();
     const ImVec2 size(560 * sc, 470 * sc);
