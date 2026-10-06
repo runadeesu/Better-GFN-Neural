@@ -21,6 +21,7 @@
 #include "platform/Display.h"
 #include "renderer/OverlayPresenter.h"
 #include "telemetry/RollingStats.h"
+#include "telemetry/StreamQuality.h"
 
 namespace bgn {
 
@@ -148,6 +149,10 @@ struct Engine::Session {
     int lastDropped = 0;
     uint64_t lastDroppedTotal = 0;
     AutoDecision lastDecision;
+    StreamQualityTracker quality;
+    double lastFrameArrival = 0;
+    std::deque<float> histQuality;
+    int batteryCap = kMaxTier;
 
     Session() {
         for (auto& r : stageMs) r = RollingStats(60);
@@ -333,16 +338,27 @@ void Engine::loopOnce(Session& s) {
     }
 
     // ---- Config / Auto Mode policy -----------------------------------------
+    const int batteryCap = batteryTierCap(sys.onBattery, cfg.power.batterySaver, cfg.power.batteryMaxTier);
+    if (batteryCap != s.batteryCap) {
+        BGN_LOG_INFO("Engine", "power: {} (max tier {})", sys.onBattery ? "on battery" : "on AC", batteryCap);
+        s.batteryCap = batteryCap;
+        s.cfgRevision = ~0ull; // re-apply the policy with the new cap
+    }
     if (cfg.revision != s.cfgRevision) {
         s.cfgRevision = cfg.revision;
         s.cfg = cfg;
         s.policy = policyFor(cfg.preset, cfg.lowLatency, cfg.priority);
         if (cfg.safeMode) s.policy.maxTier = std::min(s.policy.maxTier, 3);
+        if (s.batteryCap < kMaxTier) {
+            s.policy.maxTier = std::min(s.policy.maxTier, s.batteryCap);
+            s.policy.minTier = std::min(s.policy.minTier, s.policy.maxTier);
+            s.policy.startTier = std::min(s.policy.startTier, s.policy.maxTier);
+        }
         int initial = cfg.initialTier;
         if (cfg.preset != Preset::Auto) initial = s.policy.startTier;
         if (initial < 0) initial = estimateTierForGpu(s.device.info().vendorId, s.device.info().name, s.device.info().dedicatedVramMB / 1024.0);
         initial = std::clamp(initial, s.policy.minTier, s.policy.maxTier);
-        FrameGenMode fg = cfg.safeMode ? FrameGenMode::Off : cfg.enhancement.frameGen;
+        FrameGenMode fg = (cfg.safeMode || s.batteryCap < kMaxTier) ? FrameGenMode::Off : cfg.enhancement.frameGen;
         s.automode.configure(s.policy, fg, cfg.autoMode, initial);
         if (!cfg.autoMode) s.automode.setFixedTier(initial);
         s.autoReason = cfg.autoMode ? "Auto Mode active" : "Fixed quality (Auto Mode off)";
@@ -408,6 +424,8 @@ void Engine::loopOnce(Session& s) {
         s.sessionReady = true;
         s.pipeline.resetHistory();
         s.contentTracker.reset();
+        s.quality.reset();
+        s.lastFrameArrival = 0;
         s.inRate.reset();
         s.outRate.reset();
         BGN_LOG_INFO("Engine", "session started for '{}' via {}", target.gameName.empty() ? "GeForce NOW" : target.gameName, s.capture->name());
@@ -430,6 +448,9 @@ void Engine::loopOnce(Session& s) {
     if (got) {
         ++s.captured;
         s.inRate.tick(tNow);
+        // Frame arrival regularity (only while the stream is actually running)
+        if (s.lastFrameArrival > 0 && wantVisible && s.inRate.rate(tNow) >= 20.0) s.quality.addFrameInterval((tNow - s.lastFrameArrival) * 1000.0);
+        s.lastFrameArrival = tNow;
         s.hdrInput = frame.hdr;
         const int cropW = rw(frame.crop), cropH = rh(frame.crop);
         if (cropW < 16 || cropH < 16 || !wantVisible) {
@@ -443,6 +464,10 @@ void Engine::loopOnce(Session& s) {
             // Geometry / output plan
             s.plan = planOutput(s.cfg, client, s.mon);
             EffectiveConfig ec = resolveConfig(s.cfg.enhancement, s.automode.tier(), s.cfg.autoMode);
+            {
+                const StreamQuality q = s.quality.current();
+                applyAdaptiveCleanup(ec, s.cfg.enhancement, q.valid ? q.blockiness : -1.0);
+            }
             int streamH = 0;
             if (!s.plan.fullscreen && ec.upscaler != UpscalerKind::None) {
                 if (s.cfg.streamResolution == StreamResolution::Auto) streamH = s.contentTracker.current();
@@ -571,6 +596,8 @@ void Engine::loopOnce(Session& s) {
             if (t.stageMs[int(GpuStage::Interpolate)] > 0) s.fgMs.add(t.stageMs[int(GpuStage::Interpolate)]);
         }
         s.pipeline.pollReadbacks();
+        double qb = 0, qi = 0;
+        if (s.pipeline.takeQualityMeasurement(qb, qi)) s.quality.addBlockinessSample(qb, qi);
         ContentResMeasurement cm;
         if (s.pipeline.takeContentMeasurement(cm)) {
             double factor = estimateUpscaleFactor(cm);
@@ -623,6 +650,8 @@ void Engine::loopOnce(Session& s) {
             push(s.histGpu, float(s.gpuMs.mean()));
             push(s.histIn, float(s.inRate.rate(tEnd)));
             push(s.histOut, float(s.outRate.rate(tEnd)));
+            const StreamQuality q = s.quality.current();
+            if (q.valid && s.wasVisible) push(s.histQuality, float(q.score));
         }
         const GpuInfo& gi = s.device.info();
         st.state = s.wasVisible ? "Enhancing" : (s.sessionReady ? "Ready (GeForce NOW not in focus)" : "Starting");
@@ -688,6 +717,19 @@ void Engine::loopOnce(Session& s) {
         st.gpuMsHistory.assign(s.histGpu.begin(), s.histGpu.end());
         st.inputFpsHistory.assign(s.histIn.begin(), s.histIn.end());
         st.outputFpsHistory.assign(s.histOut.begin(), s.histOut.end());
+        st.qualityHistory.assign(s.histQuality.begin(), s.histQuality.end());
+        {
+            const StreamQuality q = s.quality.current();
+            st.streamQualityValid = q.valid;
+            st.streamQuality = q.score;
+            st.blockiness = q.blockiness;
+            st.stutter = q.stutter;
+            EffectiveConfig adj = ec;
+            applyAdaptiveCleanup(adj, s.cfg.enhancement, q.valid ? q.blockiness : -1.0);
+            st.adaptiveCleanupActive = adj.deblock > ec.deblock + 1e-4f || adj.denoise > ec.denoise + 1e-4f;
+        }
+        st.onBattery = sys.onBattery;
+        st.batterySaverActive = s.batteryCap < kMaxTier;
         {
             std::lock_guard lock(mutex_);
             st.lastError = stats_.lastError;

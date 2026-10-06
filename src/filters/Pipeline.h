@@ -81,6 +81,8 @@ public:
     ID3D11ShaderResourceView* midSrv() const { return interp_.midSrv(); }
     // Latest content resolution measurement (fresh=true once per new measurement)
     bool takeContentMeasurement(ContentResMeasurement& out);
+    // Latest blockiness measurement: mean luma step across / inside 8x8 blocks
+    bool takeQualityMeasurement(double& boundaryMeanStep, double& interiorMeanStep);
 
 private:
     void updateFrameCB(const PipelineFrameParams& p, uint32_t flags);
@@ -109,7 +111,9 @@ private:
     OpticalFlow flow_;
     NsrUpscaler nsr_;
     FrameInterpolator interp_;
-    ReadbackBuffer statsBuf_, contentBuf_;
+    ReadbackBuffer statsBuf_, contentBuf_, qualityBuf_;
+    bool qualityFresh_ = false;
+    double qualityBoundary_ = 0, qualityInterior_ = 0;
 
     gpu::FrameCB cb_{};
     uint64_t frameIndex_ = 0;

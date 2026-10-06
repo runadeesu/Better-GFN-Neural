@@ -88,8 +88,17 @@ struct EngineStats {
     int detectedStreamHeight = 0;
     double contentFactor = 0;
     bool cursorConfined = false;
+    // Stream quality monitor
+    bool streamQualityValid = false;
+    double streamQuality = 0;    // 0..100
+    double blockiness = 0;       // 0..1
+    double stutter = 0;          // 0..1
+    bool adaptiveCleanupActive = false;
+    // Power
+    bool onBattery = false;
+    bool batterySaverActive = false;
     // History for graphs (oldest first)
-    std::vector<float> gpuMsHistory, inputFpsHistory, outputFpsHistory;
+    std::vector<float> gpuMsHistory, inputFpsHistory, outputFpsHistory, qualityHistory;
 };
 
 class Engine {

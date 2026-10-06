@@ -11,6 +11,7 @@ namespace {
 constexpr DXGI_FORMAT kWork = DXGI_FORMAT_R16G16B16A16_FLOAT;
 constexpr int kStatsWords = 66;
 constexpr int kContentWords = 3;
+constexpr int kQualityWords = 4;
 } // namespace
 
 bool Pipeline::init(GpuDevice& device, ShaderLibrary& shaders) {
@@ -44,7 +45,7 @@ bool Pipeline::init(GpuDevice& device, ShaderLibrary& shaders) {
     d.DepthEnable = FALSE;
     d.StencilEnable = FALSE;
     if (FAILED(dev->CreateDepthStencilState(&d, &depth_))) return false;
-    if (!statsBuf_.create(dev, kStatsWords * 4) || !contentBuf_.create(dev, kContentWords * 4)) return false;
+    if (!statsBuf_.create(dev, kStatsWords * 4) || !contentBuf_.create(dev, kContentWords * 4) || !qualityBuf_.create(dev, kQualityWords * 4)) return false;
     return true;
 }
 
@@ -64,6 +65,8 @@ void Pipeline::release() {
     interp_.reset();
     statsBuf_.reset();
     contentBuf_.reset();
+    qualityBuf_.reset();
+    qualityFresh_ = false;
     frameCB_.reset();
     passCB_.reset();
     linear_.Reset();
@@ -230,6 +233,19 @@ bool Pipeline::process(const CaptureInput& in, const PipelineFrameParams& params
         dispatchCompute(ctx, g_.cs(ShaderId::content_res_cs), {src.srv.Get()}, {contentBuf_.uav()}, groups(rw, 16), groups(rh, 16));
         contentBuf_.requestReadback(ctx);
         updateFrameCB(params, flags);
+    }
+    if (frameIndex_ % 15 == 9) {
+        // Stream quality: blockiness on the 8x8 grid of the (reconstructed) stream
+        int rw = std::min(inW_ - 1, 512) & ~7, rh = std::min(inH_ - 1, 512) & ~7;
+        int rx = ((inW_ - rw) / 2) & ~7, ry = ((inH_ - rh) / 2) & ~7;
+        if (rw >= 16 && rh >= 16) {
+            qualityBuf_.clear(ctx);
+            gpu::PassCB p{};
+            p.gPassI = u4(uint32_t(rx), uint32_t(ry), uint32_t(rw), uint32_t(rh));
+            g_.setPass(p);
+            dispatchCompute(ctx, g_.cs(ShaderId::quality_cs), {cur_.srv.Get()}, {qualityBuf_.uav()}, groups(rw, 16), groups(rh, 16));
+            qualityBuf_.requestReadback(ctx);
+        }
     }
     if (timer) timer->mark(ctx, GpuStage::Analysis);
 
@@ -413,6 +429,21 @@ void Pipeline::pollReadbacks() {
         contentFresh_ = true;
         status_.contentFactor = estimateUpscaleFactor(content_);
     }
+    uint32_t quality[kQualityWords];
+    while (qualityBuf_.tryRead(ctx, quality, sizeof(quality))) {
+        if (quality[1] < 64 || quality[3] < 64) continue;
+        qualityBoundary_ = double(quality[0]) / 4096.0 / double(quality[1]);
+        qualityInterior_ = double(quality[2]) / 4096.0 / double(quality[3]);
+        qualityFresh_ = true;
+    }
+}
+
+bool Pipeline::takeQualityMeasurement(double& boundary, double& interior) {
+    if (!qualityFresh_) return false;
+    boundary = qualityBoundary_;
+    interior = qualityInterior_;
+    qualityFresh_ = false;
+    return true;
 }
 
 bool Pipeline::takeContentMeasurement(ContentResMeasurement& out) {

@@ -39,6 +39,7 @@ add_library(bgn_portable STATIC
     src/gfn/GfnClassifier.cpp
     src/automode/AutoModeController.cpp
     src/filters/ContentResolution.cpp
+    src/telemetry/StreamQuality.cpp
     src/neural/NsrReference.cpp
     src/app/CommandLine.cpp
     src/ui/I18n.cpp)

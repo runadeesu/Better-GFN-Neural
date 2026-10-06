@@ -9,6 +9,13 @@
 
 namespace bgn::ui {
 
+static const char* qualityLabel(double score) {
+    if (score >= 80) return "Excellent";
+    if (score >= 60) return "Good";
+    if (score >= 40) return "Fair";
+    return "Poor";
+}
+
 static void kv(const char* k, const std::string& v) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
@@ -48,6 +55,10 @@ void drawPerformancePage(PageContext& c) {
         kv(tr("Frame Interpolation"), std::format("{} \xE2\x80\x94 {}", tr(toString(e.frameGenMode)),
                                                     e.frameGenActive ? tr("active (2x)") : (e.frameGenBeneficial ? tr("standby") : tr("not beneficial at this refresh rate"))));
         kv(tr("Dropped frames"), std::format("{}", e.droppedFrames));
+        kv(tr("Stream quality"), e.streamQualityValid ? trf("{:.0f} ({})  \xC2\xB7  compression {:.0f}%  \xC2\xB7  stutter {:.1f}%{}", e.streamQuality,
+                                                            tr(qualityLabel(e.streamQuality)), e.blockiness * 100.0, e.stutter * 100.0,
+                                                            e.adaptiveCleanupActive ? std::string("  \xC2\xB7  ") + tr("adaptive cleanup active") : std::string())
+                                                      : std::string("-"));
         kv(tr("Added latency"), std::format("{:.1f} ms", e.addedLatencyMs));
         kv(tr("Quality tier"), trf("{} ({}/6)  \xC2\xB7  budget {:.1f} ms", trText(e.tierName), e.tier, e.budgetMs));
         kv("HDR", e.hdrOutput ? (e.hdrInput ? tr("HDR stream \xE2\x86\x92 HDR display") : tr("HDR+ (SDR \xE2\x86\x92 HDR)")) : tr("SDR Enhancement"));
@@ -66,6 +77,8 @@ void drawPerformancePage(PageContext& c) {
     sparkline("gpu", e.gpuMsHistory, 0, 0, ImVec2(gw, 80 * sc), col::Accent, std::format("GPU ms  {:.2f}", e.gpuMsAvg).c_str());
     sparkline("in", e.inputFpsHistory, 0, 0, ImVec2(gw, 70 * sc), col::Accent2, std::format("{}  {:.0f}", tr("Input FPS"), e.inputFps).c_str());
     sparkline("out", e.outputFpsHistory, 0, 0, ImVec2(gw, 70 * sc), col::Warn, std::format("{}  {:.0f}", tr("Output FPS"), e.outputFps).c_str());
+    sparkline("quality", e.qualityHistory, 0, 100, ImVec2(gw, 70 * sc), col::Accent,
+              (std::string(tr("Stream quality")) + (e.streamQualityValid ? std::format("  {:.0f}", e.streamQuality) : std::string("  -"))).c_str());
     endCard();
 
     beginCard("stages", ImVec2(half, 0));

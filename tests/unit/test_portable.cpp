@@ -20,6 +20,7 @@
 #include "settings/Settings.h"
 #include "settings/SettingsStore.h"
 #include "telemetry/RollingStats.h"
+#include "telemetry/StreamQuality.h"
 #include "ui/I18n.h"
 
 using namespace bgn;
@@ -756,6 +757,36 @@ TEST_CASE("adaptive_cleanup_and_battery") {
     CHECK_EQ(batteryTierCap(true, true, 2), 2);
     CHECK_EQ(batteryTierCap(true, false, 2), kMaxTier);
     CHECK_EQ(batteryTierCap(true, true, 42), kMaxTier);
+}
+
+TEST_CASE("stream_quality") {
+    CHECK(blockinessFromMeans(0.01, 0.01) < 0.01);       // same steps everywhere: clean
+    CHECK(blockinessFromMeans(0.0, 0.0) < 0.01);         // flat content is not "blocky"
+    CHECK(blockinessFromMeans(0.05, 0.004) > 0.95);      // strong block edges
+    CHECK(qualityScore(0, 0) > 99.0);
+    CHECK(qualityScore(1, 1) < 1.0);
+    CHECK(qualityScore(0.5, 0) < qualityScore(0.1, 0));
+
+    StreamQualityTracker t;
+    CHECK(!t.current().valid);
+    for (int i = 0; i < 120; ++i) t.addFrameInterval(16.7);
+    StreamQuality smooth = t.current();
+    CHECK(smooth.valid);
+    CHECK(smooth.stutter < 0.01);
+    for (int i = 0; i < 20; ++i) {
+        t.addFrameInterval(16.7);
+        t.addFrameInterval(80.0); // hiccups
+    }
+    StreamQuality stuttering = t.current();
+    CHECK(stuttering.stutter > 0.1);
+    CHECK(stuttering.score < smooth.score);
+    t.addFrameInterval(5000.0); // pauses are ignored
+    for (int i = 0; i < 10; ++i) t.addBlockinessSample(0.05, 0.004);
+    CHECK(t.current().blockiness > 0.8);
+    CHECK_EQ(std::string(StreamQuality{true, 0, 0, 90}.label()), std::string("Excellent"));
+    CHECK_EQ(std::string(StreamQuality{true, 0, 0, 30}.label()), std::string("Poor"));
+    t.reset();
+    CHECK(!t.current().valid);
 }
 
 TEST_CASE("command_line") {

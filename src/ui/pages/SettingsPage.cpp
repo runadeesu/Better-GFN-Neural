@@ -53,6 +53,23 @@ void drawSettingsPage(PageContext& c) {
     }
     endCard();
 
+    beginCard("power", ImVec2(half, 0));
+    sectionTitle(tr("Power"), tr("On a laptop running on battery, Better GFN Neural limits its GPU work and turns frame interpolation off to save power."));
+    if (toggleRow(tr("Battery saver"), &s.power.batterySaver)) c.actions.settingsChanged();
+    ImGui::BeginDisabled(!s.power.batterySaver);
+    {
+        const char* tiers[] = {tr("Minimal"), tr("Light"), tr("Performance"), tr("Balanced Lite"), tr("Balanced"), tr("Quality"), tr("Ultra")};
+        int t = s.power.batteryMaxTier;
+        if (comboRow(tr("Highest quality on battery"), &t, tiers, 7)) {
+            s.power.batteryMaxTier = t;
+            c.actions.settingsChanged();
+        }
+    }
+    ImGui::EndDisabled();
+    if (m.system.batteryPercent >= 0)
+        textWrappedDim(trf("Battery {}%  \xC2\xB7  {}", m.system.batteryPercent, m.system.onBattery ? tr("On battery") : tr("Plugged in")).c_str());
+    endCard();
+
     beginCard("gfn", ImVec2(half, 0));
     sectionTitle(tr("GeForce NOW detection"));
     if (toggleRow(tr("Also detect GeForce NOW in web browsers"), &s.detectBrowser)) c.actions.settingsChanged();

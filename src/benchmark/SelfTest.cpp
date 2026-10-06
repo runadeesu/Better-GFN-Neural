@@ -15,6 +15,7 @@
 #include "neural/NsrUpscaler.h"
 #include "renderer/GpuTimer.h"
 #include "settings/Presets.h"
+#include "telemetry/StreamQuality.h"
 
 namespace bgn {
 
@@ -433,6 +434,58 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
                                    {"color_vision", cvd},
                                    {"night_light", {{"blue_ratio", blueRatio}, {"red_ratio", redRatio}, {"pass", nightPass}}},
                                    {"pass", ok}};
+    }
+
+    // ---- Stream quality monitor (blockiness on the 8x8 grid) -----------------
+    BGN_LOG_INFO("SelfTest", "stream quality monitor");
+    {
+        const int w = 256, h = 160;
+        ConstantBuffer<gpu::FrameCB> fcb;
+        ReadbackBuffer rb;
+        bool ok = fcb.create(c.device.device()) && rb.create(c.device.device(), 16, 1);
+        auto measure = [&](const std::vector<float>& rgb, double& blockiness) {
+            ComPtr<ID3D11Texture2D> tex;
+            ComPtr<ID3D11ShaderResourceView> srv;
+            if (!createInitTexture(c.device.device(), w, h, rgb, tex, srv)) return false;
+            gpu::FrameCB cb{};
+            cb.gIn = f4(float(w), float(h), 1.0f / w, 1.0f / h);
+            fcb.update(c.device.context(), cb);
+            ID3D11Buffer* cbs[1] = {fcb.get()};
+            c.device.context()->CSSetConstantBuffers(0, 1, cbs);
+            rb.clear(c.device.context());
+            gpu::PassCB p{};
+            p.gPassI = u4(0, 0, uint32_t(w - 8), uint32_t(h - 8));
+            c.g.setPass(p);
+            dispatchCompute(c.device.context(), c.g.cs(ShaderId::quality_cs), {srv.Get()}, {rb.uav()}, groups(w - 8, 16), groups(h - 8, 16));
+            rb.requestReadback(c.device.context());
+            uint32_t v[4] = {};
+            for (int i = 0; i < 400 && !rb.tryRead(c.device.context(), v, sizeof(v)); ++i) {
+                c.device.context()->Flush();
+                Sleep(5);
+            }
+            if (v[1] == 0 || v[3] == 0) return false;
+            blockiness = blockinessFromMeans(double(v[0]) / 4096.0 / v[1], double(v[2]) / 4096.0 / v[3]);
+            return true;
+        };
+        std::mt19937 rng(11);
+        std::uniform_real_distribution<float> u(0, 1);
+        std::vector<float> blocky(size_t(w) * h * 3), smooth(size_t(w) * h * 3);
+        std::vector<float> blockValue(size_t(w / 8 + 1) * (h / 8 + 1));
+        for (auto& b : blockValue) b = 0.35f + 0.3f * u(rng);
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                float bv = blockValue[size_t(y / 8) * (w / 8 + 1) + x / 8] + (u(rng) - 0.5f) * 0.01f;
+                float sv = 0.3f + 0.4f * (float(x) / w) * (float(y) / h) + (u(rng) - 0.5f) * 0.03f;
+                for (int ch = 0; ch < 3; ++ch) {
+                    blocky[(size_t(y) * w + x) * 3 + ch] = bv;
+                    smooth[(size_t(y) * w + x) * 3 + ch] = sv;
+                }
+            }
+        double bBlocky = -1, bSmooth = -1;
+        ok = ok && measure(blocky, bBlocky) && measure(smooth, bSmooth);
+        const bool pass = ok && bBlocky > 0.6 && bSmooth < 0.2;
+        allOk &= pass;
+        report["stream_quality"] = {{"blockiness_blocky_image", bBlocky}, {"blockiness_smooth_image", bSmooth}, {"pass", pass}};
     }
 
     report["pass"] = allOk;

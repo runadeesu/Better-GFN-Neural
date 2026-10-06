@@ -89,6 +89,16 @@ void drawHomePage(PageContext& c) {
             ImGui::SameLine();
             pill(tr("SAFE MODE"), col::Error);
         }
+        if (enhancing && e.streamQualityValid) {
+            ImGui::SameLine();
+            const char* q = e.streamQuality >= 80 ? "Excellent" : e.streamQuality >= 60 ? "Good" : e.streamQuality >= 40 ? "Fair" : "Poor";
+            pill(std::format("{} {:.0f} \xC2\xB7 {}", tr("Stream quality"), e.streamQuality, tr(q)).c_str(),
+                 e.streamQuality >= 60 ? col::Accent : (e.streamQuality >= 40 ? col::Warn : col::Error));
+        }
+        if (e.batterySaverActive) {
+            ImGui::SameLine();
+            pill(tr("Battery saver"), col::Warn);
+        }
         ImGui::Dummy(ImVec2(0, 6 * sc));
         if (m.gfn.state == GfnState::NotRunning) {
             if (primaryButton(tr("Launch GeForce NOW")) && c.actions.launchGfn) c.actions.launchGfn();
