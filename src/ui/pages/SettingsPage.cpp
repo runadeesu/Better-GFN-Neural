@@ -102,6 +102,13 @@ void drawSettingsPage(PageContext& c) {
     ImGui::SameLine(0, gap);
 
     ImGui::BeginGroup();
+    beginCard("shots", ImVec2(half, 0));
+    sectionTitle(tr("Screenshots"), tr("Saved as PNG from the Home page or the tray menu while a game is enhanced. No keyboard shortcut is needed."));
+    textWrappedDim(m.screenshotFolder.c_str());
+    if (toggleRow(tr("Also save the original and a side-by-side comparison"), &s.screenshotComparison)) c.actions.settingsChanged();
+    if (secondaryButton(tr("Open folder")) && c.actions.openScreenshots) c.actions.openScreenshots();
+    endCard();
+
     beginCard("logs", ImVec2(half, 0));
     sectionTitle(tr("Logs"), tr("Logs never contain account data; the Windows user name and profile path are redacted."));
     {

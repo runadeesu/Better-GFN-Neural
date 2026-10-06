@@ -3,6 +3,7 @@
 // profiles, engine control, tray, startup integration, benchmark, recovery.
 
 #include <atomic>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <thread>
@@ -39,6 +40,8 @@ private:
     void applyLanguage();
     void recordAutomation();
     void writeAutomationReport();
+    std::filesystem::path screenshotFolder() const;
+    void takeScreenshot();
 
     CommandLine cmd_;
     AppPaths paths_;
@@ -64,6 +67,8 @@ private:
     HWND lastStream_ = nullptr;
     bool notifiedThisSession_ = false;
     bool manualStart_ = false;
+    uint64_t lastScreenshotCount_ = 0;
+    bool automationShotTaken_ = false;
     HANDLE instanceMutex_ = nullptr;
 
     // Benchmark worker

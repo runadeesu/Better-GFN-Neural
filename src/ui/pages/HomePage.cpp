@@ -114,7 +114,13 @@ void drawHomePage(PageContext& c) {
                 s.enhancementEnabled = !s.enhancementEnabled;
                 c.actions.settingsChanged();
             }
+            if (enhancing) {
+                ImGui::SameLine();
+                if (secondaryButton(tr("Take screenshot")) && c.actions.takeScreenshot) c.actions.takeScreenshot();
+            }
         }
+        if (!e.lastScreenshot.empty()) textColored(col::TextMute, trf("Saved: {}", e.lastScreenshot).c_str(), kFontLabel);
+        else if (!e.screenshotError.empty()) textColored(col::Warn, trText(e.screenshotError).c_str(), kFontLabel);
         ImGui::EndGroup();
         const float bottom = std::max(ImGui::GetItemRectMax().y, p.y + 132 * sc);
         ImGui::SetCursorScreenPos(ImVec2(p.x, bottom));

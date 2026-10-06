@@ -20,6 +20,7 @@ struct CommandLine {
     std::string logLevel;         // override log level
     std::string outputJson;       // where self-test/benchmark/automation write results
     double automationSeconds = 0; // optional duration for automation runs
+    double screenshotAt = 0;      // automation: take a screenshot after this many seconds (0 = never)
     std::vector<std::string> unknown;
 };
 

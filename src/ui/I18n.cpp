@@ -154,6 +154,17 @@ const std::unordered_map<std::string_view, const char*>& japanese() {
         {"Adapt to stream quality", "ストリーム品質に合わせて自動調整"},
         {"Raises the automatic cleanup strength when the stream quality monitor measures heavy compression (low bitrate, busy scenes).",
          "ストリーム品質モニターが強い圧縮（低ビットレートや動きの激しい場面）を検出したとき、ノイズ除去の自動強度を引き上げます。"},
+        // Screenshots
+        {"Take screenshot", "スクリーンショット"},
+        {"Screenshot saved", "スクリーンショットを保存しました"},
+        {"Screenshots", "スクリーンショット"},
+        {"Saved as PNG from the Home page or the tray menu while a game is enhanced. No keyboard shortcut is needed.",
+         "画質強化中にホーム画面またはタスクトレイのメニューから PNG で保存できます。キーボードショートカットは不要です。"},
+        {"Also save the original and a side-by-side comparison", "元映像と左右比較画像も保存"},
+        {"Open folder", "フォルダを開く"},
+        {"Saved: {}", "保存しました: {}"},
+        {"Screenshot failed (GPU readback)", "スクリーンショットに失敗しました（GPU 読み出し）"},
+        {"Screenshot could not be saved", "スクリーンショットを保存できませんでした"},
         // Stream quality / power
         {"Stream quality", "ストリーム品質"},
         {"Excellent", "非常に良い"},

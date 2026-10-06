@@ -6,6 +6,8 @@
 
 #include <array>
 #include <atomic>
+#include <filesystem>
+#include <optional>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -25,6 +27,12 @@ struct EngineTarget {
     std::string gameName;
     bool browser = false;
     bool operator==(const EngineTarget& o) const { return hwnd == o.hwnd && pid == o.pid && gameName == o.gameName; }
+};
+
+struct ScreenshotRequest {
+    std::filesystem::path folder;
+    std::string baseName;   // file name without extension
+    bool comparison = true; // also save the original and a side-by-side image
 };
 
 struct EngineConfig {
@@ -94,6 +102,10 @@ struct EngineStats {
     double blockiness = 0;       // 0..1
     double stutter = 0;          // 0..1
     bool adaptiveCleanupActive = false;
+    // Screenshots
+    uint64_t screenshotsSaved = 0;
+    std::string lastScreenshot;   // path of the last enhanced screenshot (UTF-8)
+    std::string screenshotError;
     // Power
     bool onBattery = false;
     bool batterySaverActive = false;
@@ -113,6 +125,8 @@ public:
     void setSystemSample(const SystemSample& s);
     void notifyDisplayChange();
     void setSuspended(bool suspended);
+    // Saves the next enhanced frame as PNG (asynchronously).
+    void requestScreenshot(const ScreenshotRequest& r);
 
     EngineStats stats() const;
     bool running() const { return running_.load(); }
@@ -123,6 +137,7 @@ private:
     void threadMain();
     void loopOnce(Session& s);
     void publish(const EngineStats& st);
+    void takePendingScreenshot(Session& s, bool hdrOutput, bool hdrInput, float sdrWhiteNits);
 
     std::thread thread_;
     std::atomic<bool> quit_{false}, running_{false};
@@ -134,6 +149,8 @@ private:
     SystemSample system_;
     bool displayChanged_ = true;
     bool suspended_ = false;
+    std::optional<ScreenshotRequest> pendingShot_;
+    std::thread shotThread_;
     EngineStats stats_;
 };
 

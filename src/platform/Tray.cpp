@@ -152,11 +152,12 @@ void TrayIcon::setState(TrayState state, const std::string& tooltip) {
     Shell_NotifyIconW(NIM_MODIFY, &nid);
 }
 
-UINT TrayIcon::showMenu(bool paused, bool gfnRunning) {
+UINT TrayIcon::showMenu(bool paused, bool gfnRunning, bool canScreenshot) {
     HMENU menu = CreatePopupMenu();
     AppendMenuW(menu, MF_STRING, CmdOpen, widen(tr("Open")).c_str());
     AppendMenuW(menu, MF_STRING, CmdPauseResume, widen(paused ? tr("Resume enhancement") : tr("Pause enhancement")).c_str());
     AppendMenuW(menu, MF_STRING | (gfnRunning ? MF_GRAYED : 0), CmdLaunchGfn, widen(tr("Launch GeForce NOW")).c_str());
+    AppendMenuW(menu, MF_STRING | (canScreenshot ? 0 : MF_GRAYED), CmdScreenshot, widen(tr("Take screenshot")).c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, CmdExit, widen(tr("Exit")).c_str());
     SetMenuDefaultItem(menu, CmdOpen, FALSE);

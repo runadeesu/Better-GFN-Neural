@@ -78,6 +78,8 @@ public:
     const PipelineStatus& status() const { return status_; }
     ID3D11ShaderResourceView* finalSrv() const { return final_[curFinal_].srv.Get(); }
     ID3D11Texture2D* finalTexture() const { return final_[curFinal_].tex.Get(); }
+    // Ingested input at processing resolution (working space: sRGB gamma or PQ)
+    ID3D11Texture2D* inputTexture() const { return cur_.tex.Get(); }
     ID3D11ShaderResourceView* midSrv() const { return interp_.midSrv(); }
     // Latest content resolution measurement (fresh=true once per new measurement)
     bool takeContentMeasurement(ContentResMeasurement& out);

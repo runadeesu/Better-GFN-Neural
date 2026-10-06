@@ -14,6 +14,7 @@
 #include "framegen/FramePacing.h"
 #include "neural/NsrReference.h"
 #include "gfn/GfnClassifier.h"
+#include "media/ImageOps.h"
 #include "profiles/GameTitle.h"
 #include "profiles/ProfileManager.h"
 #include "settings/Presets.h"
@@ -789,8 +790,56 @@ TEST_CASE("stream_quality") {
     CHECK(!t.current().valid);
 }
 
+TEST_CASE("image_ops_screenshots") {
+    // SDR: values map straight to 8 bit
+    std::vector<float> px = {0.0f, 0.5f, 1.0f, 1.0f, 2.0f, -1.0f, NAN, 1.0f};
+    Image8 a = encodeToSdr8(px, 2, 1, PixelEncoding::SdrGamma);
+    CHECK_EQ(a.w, 2);
+    CHECK_EQ(int(a.rgb[0]), 0);
+    CHECK_EQ(int(a.rgb[1]), 128);
+    CHECK_EQ(int(a.rgb[2]), 255);
+    CHECK_EQ(int(a.rgb[3]), 255); // clamped
+    CHECK_EQ(int(a.rgb[5]), 0);   // NaN -> 0
+    // HDR: SDR white (200 nits = 2.5 in scRGB) is bright but not clipped, very bright stays <= 255
+    std::vector<float> hdr = {2.5f, 2.5f, 2.5f, 1.0f, 100.0f, 100.0f, 100.0f, 1.0f};
+    Image8 b = encodeToSdr8(hdr, 2, 1, PixelEncoding::ScRgbLinear, 200.0f);
+    CHECK(b.rgb[0] > 150 && b.rgb[0] < 255);
+    CHECK(b.rgb[3] >= b.rgb[0]);
+    // resize + side by side
+    Image8 small{2, 2, std::vector<uint8_t>(12, 100)};
+    Image8 big = resizeBilinear(small, 8, 6);
+    CHECK_EQ(big.w, 8);
+    CHECK_EQ(big.h, 6);
+    CHECK_EQ(int(big.rgb[0]), 100);
+    Image8 right{16, 12, std::vector<uint8_t>(16 * 12 * 3, 200)};
+    Image8 sbs = sideBySide(small, right, 4);
+    CHECK_EQ(sbs.h, 12);
+    CHECK_EQ(sbs.w, 12 + 4 + 16);
+    CHECK_EQ(int(sbs.rgb[0]), 100);
+    CHECK_EQ(int(sbs.rgb[(size_t(sbs.w) - 1) * 3]), 200);
+    // PNG round trip (size check only)
+    fs::path dir = tempDir("png");
+    CHECK(writePng(dir / "x.png", sbs));
+    CHECK(fs::file_size(dir / "x.png") > 50);
+    CHECK(!writePng(dir / "empty.png", Image8{}));
+    // file names
+    std::tm t{};
+    t.tm_year = 126;
+    t.tm_mon = 9;
+    t.tm_mday = 6;
+    t.tm_hour = 21;
+    t.tm_min = 5;
+    t.tm_sec = 9;
+    CHECK_EQ(screenshotBaseName("Cyberpunk 2077", t), std::string("Cyberpunk 2077_2026-10-06_21-05-09"));
+    CHECK_EQ(screenshotBaseName("A/B: C?", t), std::string("A_B_ C__2026-10-06_21-05-09"));
+    CHECK_EQ(screenshotBaseName("", t).rfind("GeForce NOW_", 0), size_t(0));
+    std::string longName(200, 'x');
+    CHECK(screenshotBaseName(longName, t).size() < 90);
+}
+
 TEST_CASE("command_line") {
-    auto c = parseCommandLine({"--background", "--data-dir", "D:\\x", "--seconds", "12.5", "--bogus"});
+    auto c = parseCommandLine({"--background", "--data-dir", "D:\\x", "--seconds", "12.5", "--screenshot-at", "14", "--bogus"});
+    CHECK_NEAR(c.screenshotAt, 14.0, 1e-9);
     CHECK(c.background);
     CHECK_EQ(c.dataDir, std::string("D:\\x"));
     CHECK_NEAR(c.automationSeconds, 12.5, 1e-9);

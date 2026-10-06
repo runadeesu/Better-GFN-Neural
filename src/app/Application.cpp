@@ -2,6 +2,7 @@
 
 #include <dbt.h>
 #include <shellapi.h>
+#include <shlobj.h>
 
 #include <algorithm>
 #include <ctime>
@@ -14,6 +15,7 @@
 #include "core/Log.h"
 #include "core/StringUtil.h"
 #include "core/Version.h"
+#include "media/ImageOps.h"
 #include "platform/Controllers.h"
 #include "platform/CrashHandler.h"
 #include "platform/CursorControl.h"
@@ -158,6 +160,12 @@ void Application::setupActions() {
         manualStart_ = true;
         updateEngine();
     };
+    actions_.takeScreenshot = [this] { takeScreenshot(); };
+    actions_.openScreenshots = [this] {
+        std::error_code ec;
+        std::filesystem::create_directories(screenshotFolder(), ec);
+        ShellExecuteW(nullptr, L"open", screenshotFolder().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    };
     actions_.cancelBenchmark = [this] { benchCancel_ = true; };
     actions_.applyBenchmark = [this] {
         const BenchmarkResult& r = settings_.benchmark;
@@ -166,6 +174,28 @@ void Application::setupActions() {
         settings_.enhancement.frameGen = r.recommendedFrameGen;
         markDirty();
     };
+}
+
+std::filesystem::path Application::screenshotFolder() const {
+    if (!cmd_.automation.empty()) return paths_.dataDir / L"screenshots";
+    if (!settings_.screenshotFolder.empty()) return std::filesystem::path(widen(settings_.screenshotFolder));
+    PWSTR p = nullptr;
+    std::filesystem::path base = paths_.dataDir;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Pictures, 0, nullptr, &p)) && p) base = p;
+    if (p) CoTaskMemFree(p);
+    return base / L"Better GFN Neural";
+}
+
+void Application::takeScreenshot() {
+    if (!model_.engine.overlayVisible) return;
+    ScreenshotRequest r;
+    r.folder = screenshotFolder();
+    std::time_t now = std::time(nullptr);
+    std::tm lt{};
+    localtime_s(&lt, &now);
+    r.baseName = screenshotBaseName(currentGame_.empty() ? std::string("GeForce NOW") : currentGame_, lt);
+    r.comparison = settings_.screenshotComparison;
+    engine_.requestScreenshot(r);
 }
 
 void Application::startBenchmark() {
@@ -218,7 +248,7 @@ bool Application::onMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT& 
     if (msg == TrayIcon::kCallbackMessage) {
         UINT ev = LOWORD(lp);
         if (ev == WM_CONTEXTMENU || ev == WM_RBUTTONUP) {
-            UINT cmd = tray_.showMenu(!settings_.enhancementEnabled, model_.gfn.state != GfnState::NotRunning);
+            UINT cmd = tray_.showMenu(!settings_.enhancementEnabled, model_.gfn.state != GfnState::NotRunning, model_.engine.overlayVisible);
             switch (cmd) {
             case TrayIcon::CmdOpen: ui_.show(); break;
             case TrayIcon::CmdPauseResume:
@@ -226,6 +256,7 @@ bool Application::onMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT& 
                 markDirty();
                 break;
             case TrayIcon::CmdLaunchGfn: actions_.launchGfn(); break;
+            case TrayIcon::CmdScreenshot: takeScreenshot(); break;
             case TrayIcon::CmdExit: quit_ = true; break;
             default: break;
             }
@@ -414,6 +445,11 @@ void Application::tick() {
     if (now - lastModel_ >= 0.1) {
         lastModel_ = now;
         model_.engine = engine_.stats();
+        model_.screenshotFolder = narrow(screenshotFolder().wstring());
+        if (model_.engine.screenshotsSaved != lastScreenshotCount_) {
+            lastScreenshotCount_ = model_.engine.screenshotsSaved;
+            if (settings_.showNotifications) tray_.notify(tr("Screenshot saved"), model_.engine.lastScreenshot);
+        }
         updateTray();
         std::lock_guard lock(benchMutex_);
         model_.bench = benchState_;
@@ -449,6 +485,11 @@ void Application::recordAutomation() {
                      {"output", std::format("{}x{}", e.outW, e.outH)},
                      {"error", e.lastError}};
     automationLog_ += (automationSamples_++ ? ",\n" : "") + s.dump();
+    if (cmd_.screenshotAt > 0 && !automationShotTaken_ && now - startTime_ >= cmd_.screenshotAt && e.overlayVisible) {
+        automationShotTaken_ = true;
+        BGN_LOG_INFO("App", "automation: taking a screenshot");
+        takeScreenshot();
+    }
     if (cmd_.automationSeconds > 0 && now - startTime_ >= cmd_.automationSeconds) quit_ = true;
 }
 

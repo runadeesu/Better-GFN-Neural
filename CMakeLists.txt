@@ -40,6 +40,8 @@ add_library(bgn_portable STATIC
     src/automode/AutoModeController.cpp
     src/filters/ContentResolution.cpp
     src/telemetry/StreamQuality.cpp
+    src/media/ImageOps.cpp
+    src/core/StbImpl.cpp
     src/neural/NsrReference.cpp
     src/app/CommandLine.cpp
     src/ui/I18n.cpp)
@@ -61,7 +63,6 @@ if(WIN32)
     endif()
 
     add_library(bgn_win STATIC
-        src/core/StbImpl.cpp
         src/platform/Win32.cpp
         src/platform/Paths.cpp
         src/platform/Display.cpp

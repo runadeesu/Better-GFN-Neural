@@ -23,7 +23,11 @@ CommandLine parseCommandLine(const std::vector<std::string>& args) {
         else if (a == "--data-dir") value(c.dataDir);
         else if (a == "--log-level") value(c.logLevel);
         else if (a == "--output") value(c.outputJson);
-        else if (a == "--seconds") {
+        else if (a == "--screenshot-at") {
+            std::string v;
+            value(v);
+            c.screenshotAt = std::atof(v.c_str());
+        } else if (a == "--seconds") {
             std::string v;
             value(v);
             c.automationSeconds = std::atof(v.c_str());

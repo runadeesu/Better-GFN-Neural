@@ -41,6 +41,7 @@ struct UiModel {
     std::string gfnExecutable;
     std::string launchError;
     bool awaitingManualStart = false; // auto start disabled: a game is ready to be enhanced
+    std::string screenshotFolder;     // resolved folder (UTF-8)
 };
 
 struct UiActions {
@@ -59,6 +60,8 @@ struct UiActions {
     std::function<void()> languageChanged;
     std::function<void()> firstRunCompleted;
     std::function<void()> startEnhancement;          // manual start when auto start is disabled
+    std::function<void()> takeScreenshot;
+    std::function<void()> openScreenshots;
 };
 
 } // namespace bgn

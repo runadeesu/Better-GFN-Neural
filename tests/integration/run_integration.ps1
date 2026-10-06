@@ -28,7 +28,7 @@ Copy-Item $FakeGfn $gfnExe -Force
 $data = Join-Path $OutDir "data_detect"
 Remove-Item -Recurse -Force $data -ErrorAction SilentlyContinue
 $report = Join-Path $OutDir "detect.json"
-$app = Start-Process -FilePath $Exe -ArgumentList @("--automation", "detect", "--seconds", "62", "--data-dir", "`"$data`"", "--output", "`"$report`"") -PassThru
+$app = Start-Process -FilePath $Exe -ArgumentList @("--automation", "detect", "--seconds", "62", "--screenshot-at", "14", "--data-dir", "`"$data`"", "--output", "`"$report`"") -PassThru
 Start-Sleep -Seconds 5
 # launcher -> game (Cyberpunk, (R) via escape) -> resize -> fullscreen -> windowed -> other game -> exit
 $script1 = "6:title=Cyberpunk 2077® on GeForce NOW;12:resize=1600x900;16:fullscreen;21:windowed;24:minimize;26:restore;28:title=Fortnite® on GeForce NOW;34:exit"
@@ -66,6 +66,8 @@ if (Test-Path $report) {
     $results["capture_info"] = [ordered]@{ pass = $true; detail = "max captured=$captured presented=$presented backends=$backends capture sizes=$sizes errors=$errors" }
     Write-Host "[INFO] capture: captured=$captured presented=$presented backends=$backends sizes=$sizes errors=$errors"
 }
+$shots = @(Get-ChildItem (Join-Path $data "screenshots") -Filter "*.png" -ErrorAction SilentlyContinue)
+Check "screenshot_saved" (($shots | Where-Object { $_.Name -like "Cyberpunk 2077_*" }).Count -ge 3) "files: $(($shots | ForEach-Object { $_.Name }) -join ', ')"
 Check "settings_saved" (Test-Path (Join-Path $data "settings.json")) "settings.json"
 Check "log_written" ((Get-ChildItem (Join-Path $data "logs") -Filter "*.log" -ErrorAction SilentlyContinue).Count -ge 1) "logs folder"
 $logText = (Get-ChildItem (Join-Path $data "logs") -Filter "*.log" | Get-Content -Raw)

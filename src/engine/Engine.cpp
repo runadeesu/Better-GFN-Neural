@@ -11,9 +11,12 @@
 #include <memory>
 
 #include "automode/AutoModeController.h"
+#include "benchmark/GpuTestUtil.h"
+#include "media/ImageOps.h"
 #include "capture/DuplicationCapture.h"
 #include "capture/WgcCapture.h"
 #include "core/Log.h"
+#include "core/StringUtil.h"
 #include "filters/ContentResolution.h"
 #include "filters/Pipeline.h"
 #include "framegen/FramePacing.h"
@@ -175,7 +178,13 @@ void Engine::stop() {
     quit_ = true;
     SetEvent(wake_.get());
     if (thread_.joinable()) thread_.join();
+    if (shotThread_.joinable()) shotThread_.join();
     running_ = false;
+}
+
+void Engine::requestScreenshot(const ScreenshotRequest& r) {
+    std::lock_guard lock(mutex_);
+    pendingShot_ = r;
 }
 
 void Engine::setTarget(const EngineTarget& t) {
@@ -219,6 +228,49 @@ void Engine::setSuspended(bool s) {
 EngineStats Engine::stats() const {
     std::lock_guard lock(mutex_);
     return stats_;
+}
+
+void Engine::takePendingScreenshot(Session& s, bool hdrOutput, bool hdrInput, float sdrWhiteNits) {
+    std::optional<ScreenshotRequest> req;
+    {
+        std::lock_guard lock(mutex_);
+        req.swap(pendingShot_);
+    }
+    if (!req) return;
+    // GPU readback (blocking for a few ms; only when the user asked for a screenshot)
+    auto fin = std::make_shared<std::vector<float>>();
+    auto orig = std::make_shared<std::vector<float>>();
+    int fw = 0, fh = 0, ow = 0, oh = 0;
+    bool ok = readbackTexture(s.device.device(), s.device.context(), s.pipeline.finalTexture(), *fin, fw, fh);
+    if (ok && req->comparison) ok = readbackTexture(s.device.device(), s.device.context(), s.pipeline.inputTexture(), *orig, ow, oh);
+    if (!ok) {
+        std::lock_guard lock(mutex_);
+        stats_.screenshotError = "Screenshot failed (GPU readback)";
+        return;
+    }
+    if (shotThread_.joinable()) shotThread_.join();
+    shotThread_ = std::thread([this, r = *req, fin, orig, fw, fh, ow, oh, hdrOutput, hdrInput, sdrWhiteNits] {
+        std::error_code ec;
+        std::filesystem::create_directories(r.folder, ec);
+        const auto base = r.folder / std::filesystem::path(widen(r.baseName));
+        Image8 enhanced = encodeToSdr8(*fin, fw, fh, hdrOutput ? PixelEncoding::ScRgbLinear : PixelEncoding::SdrGamma, sdrWhiteNits);
+        bool ok = writePng(std::filesystem::path(base.wstring() + L".png"), enhanced);
+        if (ok && r.comparison && !orig->empty()) {
+            Image8 original = encodeToSdr8(*orig, ow, oh, hdrInput ? PixelEncoding::PqWorking : PixelEncoding::SdrGamma, sdrWhiteNits);
+            ok &= writePng(std::filesystem::path(base.wstring() + L"_original.png"), original);
+            ok &= writePng(std::filesystem::path(base.wstring() + L"_compare.png"), sideBySide(original, enhanced));
+        }
+        std::lock_guard lock(mutex_);
+        if (ok) {
+            ++stats_.screenshotsSaved;
+            stats_.lastScreenshot = narrow(base.wstring() + L".png");
+            stats_.screenshotError.clear();
+            BGN_LOG_INFO("Engine", "screenshot saved ({}x{}{})", fw, fh, r.comparison ? ", with comparison" : "");
+        } else {
+            stats_.screenshotError = "Screenshot could not be saved";
+            BGN_LOG_WARN("Engine", "screenshot could not be written to the selected folder");
+        }
+    });
 }
 
 void Engine::publish(const EngineStats& st) {
@@ -512,6 +564,7 @@ void Engine::loopOnce(Session& s) {
             ci.hdr = frame.hdr;
             const bool processed = s.pipeline.process(ci, params, &s.timer);
             s.capture->releaseFrame();
+            if (processed) takePendingScreenshot(s, hdrOut, frame.hdr, params.paperWhiteNits);
 
             if (processed) {
                 if (!s.presenter.configure(s.plan.overlay, hdrOut, s.cfg.lowLatency)) {
@@ -733,6 +786,9 @@ void Engine::loopOnce(Session& s) {
         {
             std::lock_guard lock(mutex_);
             st.lastError = stats_.lastError;
+            st.screenshotsSaved = stats_.screenshotsSaved;
+            st.lastScreenshot = stats_.lastScreenshot;
+            st.screenshotError = stats_.screenshotError;
             stats_ = st;
         }
     }

@@ -13,7 +13,7 @@ enum class TrayState { Waiting, Connected, Enhancing, Paused };
 class TrayIcon {
 public:
     static constexpr UINT kCallbackMessage = WM_APP + 10;
-    enum Command : UINT { CmdOpen = 1001, CmdPauseResume, CmdLaunchGfn, CmdExit };
+    enum Command : UINT { CmdOpen = 1001, CmdPauseResume, CmdLaunchGfn, CmdExit, CmdScreenshot };
 
     ~TrayIcon();
     bool create(HWND owner);
@@ -21,7 +21,7 @@ public:
     void recreate(); // after Explorer restarts (TaskbarCreated)
     void setState(TrayState state, const std::string& tooltip);
     // Shows the context menu and returns the chosen command (0 = none).
-    UINT showMenu(bool paused, bool gfnRunning);
+    UINT showMenu(bool paused, bool gfnRunning, bool canScreenshot = false);
     void notify(const std::string& title, const std::string& text);
     static UINT taskbarCreatedMessage();
 
