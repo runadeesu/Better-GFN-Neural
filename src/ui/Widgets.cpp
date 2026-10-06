@@ -2,7 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cfloat>
 #include <cstdio>
+#include <cstring>
+#include <string>
 
 #include "imgui_internal.h"
 #include "ui/I18n.h"
@@ -138,12 +141,109 @@ void textColored(ImU32 color, const char* text, float size, bool semibold) {
     ImGui::PopFont();
 }
 
+// ---- Japanese-aware line breaking ------------------------------------------
+// Dear ImGui only wraps at spaces, which leaves Japanese sentences unbroken or
+// broken at the nearest ASCII word. Break between CJK characters instead, but
+// never put closing punctuation / small kana at the start of a line or an
+// opening bracket at the end of one.
+static bool isCjk(unsigned c) { return c >= 0x2E80 && c <= 0xFFEF; }
+
+static bool noLineStart(unsigned c) {
+    switch (c) {
+    case 0x3001: case 0x3002: case 0xFF0C: case 0xFF0E: case 0x30FB: case 0xFF1A: case 0xFF1B: case 0xFF1F: case 0xFF01: case 0x30FC:
+    case 0xFF09: case 0x300D: case 0x300F: case 0x3011: case 0x3009: case 0x300B: case 0x3015: case 0xFF5D: case 0x3005:
+    case 0x3041: case 0x3043: case 0x3045: case 0x3047: case 0x3049: case 0x3063: case 0x3083: case 0x3085: case 0x3087: case 0x308E:
+    case 0x30A1: case 0x30A3: case 0x30A5: case 0x30A7: case 0x30A9: case 0x30C3: case 0x30E3: case 0x30E5: case 0x30E7: case 0x30EE:
+    case 0x30F5: case 0x30F6:
+    case ')': case ']': case '}': case ',': case '.': case ':': case ';': case '!': case '?': case '%': case '/':
+        return true;
+    default: return false;
+    }
+}
+
+static bool noLineEnd(unsigned c) {
+    switch (c) {
+    case 0xFF08: case 0x300C: case 0x300E: case 0x3010: case 0x3008: case 0x300A: case 0x3014: case 0xFF5B:
+    case '(': case '[': case '{': case '/':
+        return true;
+    default: return false;
+    }
+}
+
+static bool canBreakBefore(unsigned prev, unsigned c) {
+    if (prev == ' ') return c != ' ';
+    if (c == ' ' || noLineStart(c) || noLineEnd(prev)) return false;
+    return isCjk(c) || isCjk(prev);
+}
+
+static bool hasCjk(const char* text) {
+    for (const unsigned char* p = reinterpret_cast<const unsigned char*>(text); *p; ++p)
+        if (*p >= 0xE3 && *p <= 0xEF) return true;
+    return false;
+}
+
+std::string wrapText(const char* text, float wrapWidth) {
+    ImFont* font = ImGui::GetFont();
+    const float size = ImGui::GetFontSize();
+    auto width = [&](const char* a, const char* b) { return font->CalcTextSizeA(size, FLT_MAX, 0.0f, a, b).x; };
+    const char* end = text + std::strlen(text);
+    std::string out;
+    out.reserve(size_t(end - text) + 16);
+    const char* lineStart = text;
+    const char* brk = nullptr;
+    float lineW = 0.0f;
+    unsigned prev = 0;
+    auto emit = [&](const char* a, const char* b) {
+        while (b > a && b[-1] == ' ') --b;
+        out.append(a, b);
+        out.push_back('\n');
+    };
+    for (const char* s = text; s < end;) {
+        unsigned c = 0;
+        int n = ImTextCharFromUtf8(&c, s, end);
+        if (n <= 0) n = 1;
+        const char* ce = s + n;
+        if (c == '\n') {
+            emit(lineStart, s);
+            lineStart = ce;
+            brk = nullptr;
+            lineW = 0.0f;
+            prev = 0;
+            s = ce;
+            continue;
+        }
+        if (s > lineStart && canBreakBefore(prev, c)) brk = s;
+        const float w = width(s, ce);
+        if (lineW + w > wrapWidth && brk && brk > lineStart) {
+            emit(lineStart, brk);
+            lineStart = brk;
+            while (lineStart < s && *lineStart == ' ') ++lineStart;
+            lineW = width(lineStart, s);
+            brk = nullptr;
+        }
+        lineW += w;
+        prev = c;
+        s = ce;
+    }
+    out.append(lineStart, end);
+    return out;
+}
+
+void textWrapped(const char* text) {
+    if (!hasCjk(text)) {
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextUnformatted(text);
+        ImGui::PopTextWrapPos();
+        return;
+    }
+    const std::string wrapped = wrapText(text, ImGui::GetContentRegionAvail().x);
+    ImGui::TextUnformatted(wrapped.c_str());
+}
+
 void textWrappedDim(const char* text, float size) {
     ImGui::PushFont(nullptr, size > 0 ? size : kFontSmall);
     ImGui::PushStyleColor(ImGuiCol_Text, col::TextDim);
-    ImGui::PushTextWrapPos(0.0f);
-    ImGui::TextUnformatted(text);
-    ImGui::PopTextWrapPos();
+    textWrapped(text);
     ImGui::PopStyleColor();
     ImGui::PopFont();
 }
@@ -525,9 +625,13 @@ void helpMarker(const char* text) {
     ImGui::TextUnformatted("(?)");
     ImGui::PopStyleColor();
     if (ImGui::BeginItemTooltip()) {
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 28.0f);
-        ImGui::TextUnformatted(text);
-        ImGui::PopTextWrapPos();
+        if (hasCjk(text)) {
+            ImGui::TextUnformatted(wrapText(text, ImGui::GetFontSize() * 28.0f).c_str());
+        } else {
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 28.0f);
+            ImGui::TextUnformatted(text);
+            ImGui::PopTextWrapPos();
+        }
         ImGui::EndTooltip();
     }
 }

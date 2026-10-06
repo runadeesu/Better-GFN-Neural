@@ -16,6 +16,11 @@ void drawIcon(ImDrawList* dl, Icon icon, ImVec2 center, float size, ImU32 color)
 // Text helpers
 void textColored(ImU32 color, const char* text, float size = 0, bool semibold = false);
 void textWrappedDim(const char* text, float size = 0);
+// Wrapped text in the current font/color. Japanese text may break between any
+// two characters (with basic kinsoku rules); other text wraps at spaces.
+void textWrapped(const char* text);
+// Inserts line breaks so that `text` fits `wrapWidth` (Japanese-aware).
+std::string wrapText(const char* text, float wrapWidth);
 void label(const char* text); // small uppercase dim label
 // Bilingual mode: the English original of `shown` in small muted text on the
 // same line (skipped when it would not fit before `maxX`, a window-local x).

@@ -17,7 +17,7 @@ static void kv(const char* k, const std::string& v) {
     ImGui::PopStyleColor();
     englishHint(k, kFontBody, ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x);
     ImGui::TableNextColumn();
-    ImGui::TextUnformatted(v.c_str());
+    textWrapped(v.c_str()); // long values (VRAM, frame interpolation state) wrap instead of being clipped
 }
 
 void drawPerformancePage(PageContext& c) {
