@@ -13,42 +13,42 @@ void drawDisplayPage(PageContext& c) {
     const float sc = ImGui::GetStyle().FontScaleDpi;
     const float W = ImGui::GetContentRegionAvail().x;
 
-    const bool omakase = omakaseBanner(c);
-    ImGui::BeginDisabled(omakase);
-    beginCard("output", ImVec2(W, 0));
-    sectionTitle(tr("Output"), tr("Better GFN Neural shows the enhanced picture in a click-through overlay exactly over GeForce NOW. Mouse, keyboard and controllers keep working normally."));
-    label(tr("Output mode"));
-    {
-        const char* items[] = {tr("Auto"), tr("Match GFN window"), tr("Fullscreen (upscale to monitor)")};
-        int v = int(s.outputMode);
-        if (segmented("om", &v, items, 3)) {
-            s.outputMode = OutputMode(v);
-            c.actions.settingsChanged();
+    // Omakase decides the output automatically; personal display options below stay.
+    if (!omakaseBanner(c)) {
+        beginCard("output", ImVec2(W, 0));
+        sectionTitle(tr("Output"), tr("Better GFN Neural shows the enhanced picture in a click-through overlay exactly over GeForce NOW. Mouse, keyboard and controllers keep working normally."));
+        label(tr("Output mode"));
+        {
+            const char* items[] = {tr("Auto"), tr("Match GFN window"), tr("Fullscreen (upscale to monitor)")};
+            int v = int(s.outputMode);
+            if (segmented("om", &v, items, 3)) {
+                s.outputMode = OutputMode(v);
+                c.actions.settingsChanged();
+            }
+            textWrappedDim(tr("Auto: when GeForce NOW runs fullscreen the overlay matches it; when it runs in a smaller window the picture is upscaled to the whole monitor (the cursor is kept inside the game window and drawn scaled)."));
         }
-        textWrappedDim(tr("Auto: when GeForce NOW runs fullscreen the overlay matches it; when it runs in a smaller window the picture is upscaled to the whole monitor (the cursor is kept inside the game window and drawn scaled)."));
-    }
-    label(tr("Output resolution"));
-    {
-        const char* items[] = {tr("Auto"), tr("Source"), "1080p", "1440p", "2160p"};
-        int v = int(s.outputResolution);
-        if (segmented("or", &v, items, 5)) {
-            s.outputResolution = OutputResolution(v);
-            c.actions.settingsChanged();
+        label(tr("Output resolution"));
+        {
+            const char* items[] = {tr("Auto"), tr("Source"), "1080p", "1440p", "2160p"};
+            int v = int(s.outputResolution);
+            if (segmented("or", &v, items, 5)) {
+                s.outputResolution = OutputResolution(v);
+                c.actions.settingsChanged();
+            }
         }
-    }
-    if (toggleRow(tr("Before / after split view"), &s.compareSplit)) c.actions.settingsChanged();
-    if (toggleRow(tr("Low Latency Mode"), &s.lowLatency)) c.actions.settingsChanged();
-    label(tr("Capture method"));
-    {
-        const char* items[] = {tr("Auto"), "Windows Graphics Capture", "DXGI Desktop Duplication"};
-        int v = int(s.captureBackend);
-        if (segmented("cb", &v, items, 3)) {
-            s.captureBackend = CaptureBackend(v);
-            c.actions.settingsChanged();
+        if (toggleRow(tr("Before / after split view"), &s.compareSplit)) c.actions.settingsChanged();
+        if (toggleRow(tr("Low Latency Mode"), &s.lowLatency)) c.actions.settingsChanged();
+        label(tr("Capture method"));
+        {
+            const char* items[] = {tr("Auto"), "Windows Graphics Capture", "DXGI Desktop Duplication"};
+            int v = int(s.captureBackend);
+            if (segmented("cb", &v, items, 3)) {
+                s.captureBackend = CaptureBackend(v);
+                c.actions.settingsChanged();
+            }
         }
+        endCard();
     }
-    endCard();
-    ImGui::EndDisabled();
     ImGui::Dummy(ImVec2(0, 2 * sc));
 
     beginCard("osd", ImVec2(W, 0));

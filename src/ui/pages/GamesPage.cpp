@@ -58,15 +58,17 @@ void drawGamesPage(PageContext& c) {
     if (it != s.profiles.end()) {
         GameProfile& p = it->second;
         beginCard("profileHeader", ImVec2(W - listW - gap, 0));
-        sectionTitle(p.displayName.c_str(), p.builtin ? tr("Built-in profile tuned for this game. You can change everything.") : nullptr);
+        sectionTitle(p.displayName.c_str(), p.builtin && !omakase ? tr("Built-in profile tuned for this game. You can change everything.") : nullptr);
         if (omakase) {
             const GameKind kind = classifyGame(p.key);
             std::string line = trf("Omakase: {}", tr(toString(kind)));
             if (p.learnedTier >= 0) line += "  \xC2\xB7  " + trf("Learned \xC2\xB7 starts at {}", trText(tierName(p.learnedTier)));
             textColored(col::Accent, line.c_str(), kFontBody, true);
-            ImGui::Dummy(ImVec2(0, 2 * sc));
+            textWrappedDim(tr("Tuned automatically for this type of game. Choose \"Adjust manually instead\" above to edit this profile."));
+            endCard();
+            ImGui::EndGroup();
+            return;
         }
-        ImGui::BeginDisabled(omakase);
         bool changed = false;
         changed |= toggleRow(tr("Use global settings"), &p.useGlobal);
         ImGui::BeginDisabled(p.useGlobal);
@@ -90,14 +92,12 @@ void drawGamesPage(PageContext& c) {
             std::string key = p.key;
             selected.clear();
             c.actions.deleteProfile(key);
-            ImGui::EndDisabled();
             endCard();
             ImGui::EndGroup();
             return;
         }
         endCard();
         if (!p.useGlobal) changed |= drawEnhancementEditor(p.enhancement, p.key.c_str());
-        ImGui::EndDisabled();
         if (changed) c.actions.settingsChanged();
     } else {
         beginCard("empty", ImVec2(W - listW - gap, 0));

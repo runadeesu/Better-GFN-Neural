@@ -203,6 +203,8 @@ const std::unordered_map<std::string_view, const char*>& japanese() {
         {"Racing / fast motion", "レース / 速い動き"},
         {"Pixel art / voxel", "ドット絵 / ボクセル"},
         {"Omakase: {}", "おまかせ: {}"},
+        {"Tuned automatically for this type of game. Choose \"Adjust manually instead\" above to edit this profile.",
+         "このゲームの種類に合わせて自動で調整しています。プロファイルを編集するときは、上の「自分で細かく設定する」を押してください。"},
         {"Turning on Omakase mode", "おまかせモードを有効化"},
         {"No settings needed - tuned automatically for each game and this PC", "設定は不要です。ゲームごと・この PC に合わせて自動で調整します"},
         {"Just start a game in GeForce NOW. The type of game is recognized and AI upscaling, smoothness and latency are tuned automatically.",
