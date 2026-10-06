@@ -26,7 +26,8 @@ that enhances the GeForce NOW picture locally on the GPU.
 - AUTO MODE controller with 7 quality tiers, presets Auto / Ultra / Quality /
   Balanced / Performance / Low Latency, VRAM/latency/GPU-load governor.
 - Game profiles with automatic recognition and built-in templates for 10 titles.
-- Modern custom UI (English / 日本語), first-run check, statistics page with live
+- Modern custom UI in English, 日本語 or Japanese + English (bilingual labels),
+  switchable from the title bar; first-run check, statistics page with live
   graphs, in-app benchmark with recommendations, system tray states, Start with
   Windows, controller detection, logs with privacy redaction.
 - Robustness: device-loss recovery, capture reconnection, display/sleep handling,
