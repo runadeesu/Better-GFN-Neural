@@ -17,6 +17,9 @@ void drawIcon(ImDrawList* dl, Icon icon, ImVec2 center, float size, ImU32 color)
 void textColored(ImU32 color, const char* text, float size = 0, bool semibold = false);
 void textWrappedDim(const char* text, float size = 0);
 void label(const char* text); // small uppercase dim label
+// Bilingual mode: the English original of `shown` in small muted text on the
+// same line (skipped when it would not fit before `maxX`, a window-local x).
+void englishHint(const char* shown, float mainFontSize, float maxX = 0.0f);
 
 // Containers
 void beginCard(const char* id, ImVec2 size, bool padded = true);

@@ -148,7 +148,30 @@ void textWrappedDim(const char* text, float size) {
     ImGui::PopFont();
 }
 
-void label(const char* text) { textColored(col::TextMute, text, kFontLabel, true); }
+void englishHint(const char* shown, float mainFontSize, float maxX) {
+    const char* en = englishFor(shown);
+    if (!en) return;
+    const float hintSize = std::min(kFontLabel, mainFontSize);
+    ImGui::PushFont(fonts().regular, hintSize);
+    // Window-local x right after the previous item.
+    const float startX = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + ImGui::GetScrollX() + S(8);
+    if (maxX > 0 && startX + ImGui::CalcTextSize(en).x > maxX) {
+        ImGui::PopFont();
+        return;
+    }
+    ImGui::SameLine(0, S(8));
+    // Sit on the baseline of the (larger) main text.
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (mainFontSize - hintSize) * dpi() * 0.72f);
+    ImGui::PushStyleColor(ImGuiCol_Text, col::TextMute);
+    ImGui::TextUnformatted(en);
+    ImGui::PopStyleColor();
+    ImGui::PopFont();
+}
+
+void label(const char* text) {
+    textColored(col::TextMute, text, kFontLabel, true);
+    englishHint(text, kFontLabel);
+}
 
 void beginCard(const char* id, ImVec2 size, bool padded) {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, col::Card);
@@ -166,6 +189,7 @@ void endCard() {
 
 void sectionTitle(const char* title, const char* subtitle) {
     textColored(col::Text, title, kFontValue - 2, true);
+    englishHint(title, kFontValue - 2);
     if (subtitle) textWrappedDim(subtitle);
     ImGui::Dummy(ImVec2(0, S(2)));
 }
@@ -203,7 +227,9 @@ static float labelColumn() { return ImGui::GetContentRegionAvail().x * 0.42f; }
 bool toggleRow(const char* text, bool* v, const char* help) {
     ImGui::PushID(text);
     ImGui::AlignTextToFramePadding();
+    const float maxX = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight() * 1.6f - S(40);
     ImGui::TextUnformatted(text);
+    englishHint(text, kFontBody, maxX);
     if (help) {
         ImGui::SameLine();
         helpMarker(help);
@@ -264,6 +290,7 @@ bool sliderRow(const char* text, float* v, float minV, float maxV, const char* f
     ImGui::PushStyleColor(ImGuiCol_Text, col::TextDim);
     ImGui::TextUnformatted(text);
     ImGui::PopStyleColor();
+    englishHint(text, kFontBody, x0 + col - S(6));
     if (help) {
         ImGui::SameLine();
         helpMarker(help);
@@ -283,6 +310,7 @@ bool featureRow(const char* text, Feature& f, const char* help) {
     ImGui::PushStyleColor(ImGuiCol_Text, f.enabled ? col::Text : col::TextMute);
     ImGui::TextUnformatted(text);
     ImGui::PopStyleColor();
+    englishHint(text, kFontBody, ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - S(30));
     if (help) {
         ImGui::SameLine();
         helpMarker(help);
@@ -314,6 +342,7 @@ bool comboRow(const char* text, int* current, const char* const* items, int coun
     ImGui::PushStyleColor(ImGuiCol_Text, col::TextDim);
     ImGui::TextUnformatted(text);
     ImGui::PopStyleColor();
+    englishHint(text, kFontBody, x0 + col - S(6));
     ImGui::SameLine(x0 + col);
     ImGui::SetNextItemWidth(-1);
     bool c = ImGui::Combo("##c", current, items, count);
@@ -378,8 +407,16 @@ void statTile(const char* id, const char* labelText, const char* value, const ch
     dl->AddCircleFilled(ic, S(15), withAlpha(accent, 0.14f), 32);
     drawIcon(dl, icon, ic, S(17), accent);
     ImGui::PushFont(fonts().semibold, kFontLabel);
-    dl->AddText(ImVec2(ic.x + S(24), ic.y - ImGui::GetFontSize() * 0.5f), col::TextMute, labelText);
+    const ImVec2 lp(ic.x + S(24), ic.y - ImGui::GetFontSize() * 0.5f);
+    dl->AddText(lp, col::TextMute, labelText);
+    const float labelW = ImGui::CalcTextSize(labelText).x;
     ImGui::PopFont();
+    if (const char* en = englishFor(labelText)) {
+        ImGui::PushFont(fonts().regular, kFontLabel - 0.5f);
+        if (lp.x + labelW + S(8) + ImGui::CalcTextSize(en).x < p.x + size.x - S(8))
+            dl->AddText(ImVec2(lp.x + labelW + S(8), lp.y + S(0.5f)), withAlpha(col::TextMute, 0.75f), en);
+        ImGui::PopFont();
+    }
     ImGui::PushFont(fonts().semibold, kFontValue);
     float vy = p.y + pad + S(38);
     dl->PushClipRect(p, ImVec2(p.x + size.x - S(6), p.y + size.y), true);
@@ -468,6 +505,7 @@ void barRow(const char* text, float value, float maxValue, const char* valueText
     ImGui::PushStyleColor(ImGuiCol_Text, col::TextDim);
     ImGui::TextUnformatted(text);
     ImGui::PopStyleColor();
+    englishHint(text, kFontBody, x0 + col - S(6));
     ImGui::SameLine(x0 + col);
     ImVec2 p = ImGui::GetCursorScreenPos();
     float w = ImGui::GetContentRegionAvail().x - S(80);

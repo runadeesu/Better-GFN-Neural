@@ -2,6 +2,8 @@
 
 #include <filesystem>
 #include <fstream>
+#include <string_view>
+#include <vector>
 
 #include "../TestFramework.h"
 #include "app/CommandLine.h"
@@ -18,6 +20,7 @@
 #include "settings/Settings.h"
 #include "settings/SettingsStore.h"
 #include "telemetry/RollingStats.h"
+#include "ui/I18n.h"
 
 using namespace bgn;
 namespace fs = std::filesystem;
@@ -574,6 +577,81 @@ TEST_CASE("log_files_not_overwritten_by_quick_restart") {
     }
     CHECK_EQ(files, 2);
     CHECK_EQ(withFirst, 1);
+}
+
+// Placeholders ("{}", "{:.2f}", ...) in order; a translation must keep them
+// identical or std::vformat would throw at runtime.
+static std::vector<std::string> placeholders(std::string_view s) {
+    std::vector<std::string> out;
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] != '{') continue;
+        size_t j = s.find('}', i);
+        if (j == std::string_view::npos) break;
+        out.emplace_back(s.substr(i, j - i + 1));
+        i = j;
+    }
+    return out;
+}
+
+TEST_CASE("i18n_japanese_table_is_consistent") {
+    int checked = 0;
+    for (const auto& [en, ja] : japaneseTable()) {
+        CHECK(placeholders(en) == placeholders(ja));
+        CHECK(std::string_view(ja).size() > 0);
+        ++checked;
+    }
+    CHECK(checked > 250);
+    // Every English string the UI needs most must exist in the table.
+    for (const char* key : {"Home", "Enhancement", "Display", "Games", "Performance", "Benchmark", "Settings", "Launch GeForce NOW", "Auto Mode",
+                            "Frame Interpolation", "Low Latency Mode", "Minimal", "Light", "Balanced Lite", "Quality", "Ultra",
+                            "Fast Reconstruct (Lanczos-AR)", "Native (no upscaling)", "Waiting for a GeForce NOW game"})
+        CHECK(japaneseTable().count(key) == 1);
+}
+
+TEST_CASE("i18n_languages") {
+    CHECK(resolveLanguage("en") == UiLanguage::English);
+    CHECK(resolveLanguage("ja") == UiLanguage::Japanese);
+    CHECK(resolveLanguage("ja+en") == UiLanguage::Bilingual);
+
+    setUiLanguage(UiLanguage::English);
+    CHECK_EQ(std::string(tr("Home")), std::string("Home"));
+    CHECK(englishFor(tr("Home")) == nullptr);
+    CHECK_EQ(trText("VRAM pressure (Balanced -> Quality)"), std::string("VRAM pressure (Balanced -> Quality)"));
+
+    setUiLanguage(UiLanguage::Japanese);
+    CHECK_EQ(std::string(tr("Home")), std::string("ホーム"));
+    CHECK(englishFor(tr("Home")) == nullptr); // English hints only in bilingual mode
+    CHECK_EQ(std::string(tr("Unknown text stays")), std::string("Unknown text stays"));
+    CHECK_EQ(trText("VRAM pressure (Balanced -> Quality)"), std::string("VRAM 逼迫（バランス → クオリティ）"));
+    CHECK_EQ(trText("Measuring Balanced Lite quality"), std::string("バランス（軽量） を測定中"));
+    CHECK_EQ(trText("Windows Graphics Capture failed: Access denied (0x80070005)"),
+             std::string("Windows Graphics Capture が失敗しました: Access denied (0x80070005)"));
+    CHECK_EQ(trText("2560x1440 (monitor)"), std::string("2560x1440（モニター）"));
+    CHECK_EQ(trText("Waiting for a GeForce NOW game"), std::string("GeForce NOW のゲームを待機中"));
+    CHECK_EQ(trf("stream {}p detected", 720), std::string("ストリーム 720p を検出"));
+    CHECK_EQ(trf("{:.2f} ms avg  \xC2\xB7  {:.2f} p95  \xC2\xB7  {:.2f} max", 1.0, 2.0, 3.0),
+             std::string("平均 1.00 ms  \xC2\xB7  p95 2.00  \xC2\xB7  最大 3.00"));
+
+    setUiLanguage(UiLanguage::Bilingual);
+    CHECK_EQ(std::string(tr("Settings")), std::string("設定"));
+    CHECK(englishFor(tr("Settings")) != nullptr);
+    CHECK_EQ(std::string(englishFor(tr("Settings"))), std::string("Settings"));
+    CHECK(englishFor("not a translation") == nullptr);
+    CHECK(englishFor(tr("Neural Super Resolution")) == nullptr); // same in both languages
+
+    setUiLanguage(UiLanguage::English);
+}
+
+TEST_CASE("settings_language_values") {
+    Settings s;
+    for (const char* v : {"auto", "en", "ja", "ja+en"}) {
+        s.language = v;
+        s.sanitize();
+        CHECK_EQ(s.language, std::string(v));
+    }
+    s.language = "fr";
+    s.sanitize();
+    CHECK_EQ(s.language, std::string("auto"));
 }
 
 TEST_CASE("command_line") {

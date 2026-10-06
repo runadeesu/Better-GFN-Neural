@@ -21,7 +21,7 @@ void drawGamesPage(PageContext& c) {
 
     const float listW = 300 * sc, gap = 12 * sc;
     beginCard("list", ImVec2(listW, 0));
-    sectionTitle(tr("Game profiles"), "Created automatically from the GeForce NOW window title. Built-in tuning for popular games.");
+    sectionTitle(tr("Game profiles"), tr("Created automatically from the GeForce NOW window title. Built-in tuning for popular games."));
     std::vector<const GameProfile*> sorted;
     for (const auto& [k, p] : s.profiles) sorted.push_back(&p);
     std::sort(sorted.begin(), sorted.end(), [](const GameProfile* a, const GameProfile* b) { return a->lastPlayedUnix > b->lastPlayedUnix; });
@@ -40,8 +40,8 @@ void drawGamesPage(PageContext& c) {
         ImGui::PushFont(fonts().semibold, kFontBody);
         dl->AddText(ImVec2(pos.x + 12 * sc, pos.y + 8 * sc), col::Text, p->displayName.c_str());
         ImGui::PopFont();
-        std::string sub = std::format("{}{} \xC2\xB7 {} {}", p->builtin ? tr("Built-in") : "", p->builtin ? "" : "", p->sessions, tr("sessions"));
-        if (p->useGlobal) sub += "  \xC2\xB7  Global";
+        std::string sub = p->builtin ? std::format("{} \xC2\xB7 {} {}", tr("Built-in"), p->sessions, tr("sessions")) : std::format("{} {}", p->sessions, tr("sessions"));
+        if (p->useGlobal) sub += std::string("  \xC2\xB7  ") + tr("Global");
         if (isCurrent) sub = std::string("\xE2\x96\xB6 ") + sub;
         ImGui::PushFont(fonts().regular, kFontSmall);
         dl->AddText(ImVec2(pos.x + 12 * sc, pos.y + 29 * sc), isCurrent ? col::Accent : col::TextDim, sub.c_str());
@@ -56,7 +56,7 @@ void drawGamesPage(PageContext& c) {
     if (it != s.profiles.end()) {
         GameProfile& p = it->second;
         beginCard("profileHeader", ImVec2(W - listW - gap, 0));
-        sectionTitle(p.displayName.c_str(), p.builtin ? "Built-in profile tuned for this game. You can change everything." : nullptr);
+        sectionTitle(p.displayName.c_str(), p.builtin ? tr("Built-in profile tuned for this game. You can change everything.") : nullptr);
         bool changed = false;
         changed |= toggleRow(tr("Use global settings"), &p.useGlobal);
         ImGui::BeginDisabled(p.useGlobal);
@@ -89,7 +89,7 @@ void drawGamesPage(PageContext& c) {
         if (changed) c.actions.settingsChanged();
     } else {
         beginCard("empty", ImVec2(W - listW - gap, 0));
-        textWrappedDim("Supported out of the box: Cyberpunk 2077, Fortnite, Forza Horizon, Call of Duty, Minecraft, Apex Legends, Counter-Strike, Baldur's Gate 3, The Witcher 3, Rocket League. Any other game gets a profile automatically.");
+        textWrappedDim(tr("Supported out of the box: Cyberpunk 2077, Fortnite, Forza Horizon, Call of Duty, Minecraft, Apex Legends, Counter-Strike, Baldur's Gate 3, The Witcher 3, Rocket League. Any other game gets a profile automatically."));
         endCard();
     }
     ImGui::EndGroup();

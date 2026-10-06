@@ -14,7 +14,7 @@ void drawDisplayPage(PageContext& c) {
     const float W = ImGui::GetContentRegionAvail().x;
 
     beginCard("output", ImVec2(W, 0));
-    sectionTitle(tr("Output"), "Better GFN Neural shows the enhanced picture in a click-through overlay exactly over GeForce NOW. Mouse, keyboard and controllers keep working normally.");
+    sectionTitle(tr("Output"), tr("Better GFN Neural shows the enhanced picture in a click-through overlay exactly over GeForce NOW. Mouse, keyboard and controllers keep working normally."));
     label(tr("Output mode"));
     {
         const char* items[] = {tr("Auto"), tr("Match GFN window"), tr("Fullscreen (upscale to monitor)")};
@@ -23,11 +23,11 @@ void drawDisplayPage(PageContext& c) {
             s.outputMode = OutputMode(v);
             c.actions.settingsChanged();
         }
-        textWrappedDim("Auto: when GeForce NOW runs fullscreen the overlay matches it; when it runs in a smaller window the picture is upscaled to the whole monitor (the cursor is kept inside the game window and drawn scaled).");
+        textWrappedDim(tr("Auto: when GeForce NOW runs fullscreen the overlay matches it; when it runs in a smaller window the picture is upscaled to the whole monitor (the cursor is kept inside the game window and drawn scaled)."));
     }
     label(tr("Output resolution"));
     {
-        const char* items[] = {tr("Auto"), "Source", "1080p", "1440p", "2160p"};
+        const char* items[] = {tr("Auto"), tr("Source"), "1080p", "1440p", "2160p"};
         int v = int(s.outputResolution);
         if (segmented("or", &v, items, 5)) {
             s.outputResolution = OutputResolution(v);
@@ -69,13 +69,13 @@ void drawDisplayPage(PageContext& c) {
     }
     ImGui::Dummy(ImVec2(0, 4 * sc));
     if (ImGui::BeginTable("montable", 7, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_PadOuterX)) {
-        ImGui::TableSetupColumn("Monitor");
-        ImGui::TableSetupColumn("Resolution");
-        ImGui::TableSetupColumn("Refresh");
+        ImGui::TableSetupColumn(tr("Monitor"));
+        ImGui::TableSetupColumn(tr("Resolution"));
+        ImGui::TableSetupColumn(tr("Refresh"));
         ImGui::TableSetupColumn("HDR");
-        ImGui::TableSetupColumn("Peak / SDR white");
-        ImGui::TableSetupColumn("Color depth");
-        ImGui::TableSetupColumn("VRR / tearing");
+        ImGui::TableSetupColumn(tr("Peak / SDR white"));
+        ImGui::TableSetupColumn(tr("Color depth"));
+        ImGui::TableSetupColumn(tr("VRR / tearing"));
         ImGui::TableHeadersRow();
         for (const auto& mon : m.monitors) {
             ImGui::TableNextRow();
@@ -86,17 +86,17 @@ void drawDisplayPage(PageContext& c) {
             ImGui::TableNextColumn();
             ImGui::Text("%.2f Hz", mon.refreshHz);
             ImGui::TableNextColumn();
-            ImGui::TextUnformatted(mon.hdrEnabled ? "On" : (mon.hdrSupported ? "Supported (off)" : "No"));
+            ImGui::TextUnformatted(mon.hdrEnabled ? tr("On") : (mon.hdrSupported ? tr("Supported (off)") : tr("Not supported")));
             ImGui::TableNextColumn();
             ImGui::Text("%.0f / %.0f nits", mon.maxLuminance, mon.sdrWhiteNits);
             ImGui::TableNextColumn();
             ImGui::Text("%d-bit", mon.bitsPerColor);
             ImGui::TableNextColumn();
-            ImGui::TextUnformatted(m.tearingSupported ? "Capable" : "Not available");
+            ImGui::TextUnformatted(m.tearingSupported ? tr("Capable") : tr("Not available"));
         }
         ImGui::EndTable();
     }
-    textWrappedDim("Refresh rate is read from the active display mode (e.g. 60, 120, 144, 165, 240 Hz) and used by Auto Mode and frame pacing. VRR-capable presentation is reported by DXGI (tearing support); the overlay is composed by Windows, so VRR follows the desktop compositor.");
+    textWrappedDim(tr("Refresh rate is read from the active display mode (e.g. 60, 120, 144, 165, 240 Hz) and used by Auto Mode and frame pacing. VRR-capable presentation is reported by DXGI (tearing support); the overlay is composed by Windows, so VRR follows the desktop compositor."));
     endCard();
 }
 

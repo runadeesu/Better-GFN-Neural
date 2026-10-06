@@ -28,7 +28,7 @@ void drawSettingsPage(PageContext& c) {
     beginCard("startup", ImVec2(half, 0));
     sectionTitle(tr("Startup"));
     bool sw = s.startWithWindows;
-    if (toggleRow(tr("Start with Windows"), &sw, "Windows sign-in \xE2\x86\x92 Better GFN Neural starts in the tray \xE2\x86\x92 waits for GeForce NOW \xE2\x86\x92 enhances automatically.")) {
+    if (toggleRow(tr("Start with Windows"), &sw, tr("Windows sign-in \xE2\x86\x92 Better GFN Neural starts in the tray \xE2\x86\x92 waits for GeForce NOW \xE2\x86\x92 enhances automatically."))) {
         s.startWithWindows = sw;
         if (c.actions.setStartWithWindows) c.actions.setStartWithWindows(sw);
         c.actions.settingsChanged();
@@ -39,10 +39,14 @@ void drawSettingsPage(PageContext& c) {
     if (toggleRow(tr("Show notifications"), &s.showNotifications)) c.actions.settingsChanged();
     label(tr("Language"));
     {
-        const char* items[] = {tr("Auto"), "English", "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"};
-        int v = s.language == "en" ? 1 : (s.language == "ja" ? 2 : 0);
-        if (segmented("lang", &v, items, 3)) {
-            s.language = v == 1 ? "en" : (v == 2 ? "ja" : "auto");
+        // Language names are always shown in their own language.
+        const char* items[] = {tr("Auto"), "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E", "English", "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E + English"};
+        static const char* values[] = {"auto", "ja", "en", "ja+en"};
+        int v = 0;
+        for (int i = 0; i < 4; ++i)
+            if (s.language == values[i]) v = i;
+        if (segmented("lang", &v, items, 4)) {
+            s.language = values[v];
             c.actions.settingsChanged();
             if (c.actions.languageChanged) c.actions.languageChanged();
         }
@@ -60,15 +64,15 @@ void drawSettingsPage(PageContext& c) {
         init = true;
     }
     ImGui::SetNextItemWidth(-1);
-    if (ImGui::InputTextWithHint("##gfnpath", m.gfnExecutable.empty() ? "Not found - enter GeForceNOW.exe path" : m.gfnExecutable.c_str(), pathBuf, sizeof(pathBuf))) {
+    if (ImGui::InputTextWithHint("##gfnpath", m.gfnExecutable.empty() ? tr("Not found - enter GeForceNOW.exe path") : m.gfnExecutable.c_str(), pathBuf, sizeof(pathBuf))) {
         s.gfnExecutableOverride = pathBuf;
         c.actions.settingsChanged();
     }
-    textWrappedDim("Detection is read-only: window titles of GeForce NOW only. Nothing is injected into GeForce NOW and no NVIDIA servers are contacted.");
+    textWrappedDim(tr("Detection is read-only: window titles of GeForce NOW only. Nothing is injected into GeForce NOW and no NVIDIA servers are contacted."));
     endCard();
 
     beginCard("controllers", ImVec2(half, 0));
-    sectionTitle(tr("Controllers"), "Detected for information only - input always goes directly to GeForce NOW.");
+    sectionTitle(tr("Controllers"), tr("Detected for information only - input always goes directly to GeForce NOW."));
     if (m.controllers.empty()) textWrappedDim(tr("No controllers detected"));
     for (const auto& ctl : m.controllers) {
         pill(ctl.family.c_str(), ctl.family == "Xbox" ? col::Accent : col::Accent2);
@@ -82,9 +86,10 @@ void drawSettingsPage(PageContext& c) {
 
     ImGui::BeginGroup();
     beginCard("logs", ImVec2(half, 0));
-    sectionTitle(tr("Logs"), "Logs never contain account data; the Windows user name and profile path are redacted.");
+    sectionTitle(tr("Logs"), tr("Logs never contain account data; the Windows user name and profile path are redacted."));
     {
-        const char* items[] = {"Debug", "Info", "Warning", "Error"};
+        label(tr("Log level"));
+        const char* items[] = {tr("Debug"), tr("Info"), tr("Warning"), tr("Error")};
         int v = int(s.logLevel);
         if (segmented("ll", &v, items, 4)) {
             s.logLevel = LogLevel(v);
@@ -110,9 +115,9 @@ void drawSettingsPage(PageContext& c) {
     sectionTitle(tr("About"));
     textColored(col::Text, std::format("Better GFN Neural {}", kVersionString).c_str(), kFontBody, true);
     textWrappedDim(tr("Unofficial companion app. Not affiliated with or endorsed by NVIDIA."));
-    textWrappedDim("GeForce NOW is a trademark of NVIDIA Corporation. This app only post-processes the picture shown on your own PC; it does not modify GeForce NOW, its servers, accounts, queues, session limits or DRM.");
-    textWrappedDim(std::format("Data folder: {}{}", m.dataDir, m.portable ? "  (portable)" : "").c_str());
-    textWrappedDim("License: MIT. Third-party: Dear ImGui (MIT), nlohmann/json (MIT), stb (Public Domain/MIT). See THIRD_PARTY_NOTICES.md.");
+    textWrappedDim(tr("GeForce NOW is a trademark of NVIDIA Corporation. This app only post-processes the picture shown on your own PC; it does not modify GeForce NOW, its servers, accounts, queues, session limits or DRM."));
+    textWrappedDim(trf("Data folder: {}{}", m.dataDir, m.portable ? tr("  (portable)") : "").c_str());
+    textWrappedDim(tr("License: MIT. Third-party: Dear ImGui (MIT), nlohmann/json (MIT), stb (Public Domain/MIT). See THIRD_PARTY_NOTICES.md."));
     ImGui::Dummy(ImVec2(0, 4 * sc));
     if (secondaryButton(tr("Reset all settings")) && c.actions.resetSettings) c.actions.resetSettings();
     ImGui::SameLine();
@@ -136,14 +141,15 @@ bool drawFirstRun(PageContext& c, float t) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     ImGui::Begin("##firstrun", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
     textColored(col::Text, tr("Welcome to Better GFN Neural"), kFontTitle, true);
+    englishHint(tr("Welcome to Better GFN Neural"), kFontTitle);
     textWrappedDim(tr("Unofficial companion app. Not affiliated with or endorsed by NVIDIA."));
     ImGui::Dummy(ImVec2(0, 10 * sc));
-    std::string gpu = m.gpus.empty() ? "No hardware GPU found (software fallback)" : m.gpus.front().name;
+    std::string gpu = m.gpus.empty() ? tr("No hardware GPU found (software fallback)") : m.gpus.front().name;
     std::string mon = m.monitors.empty() ? "-" : std::format("{} \xC2\xB7 {:.0f} Hz{}", resolutionText(m.monitors.front().width, m.monitors.front().height),
                                                              m.monitors.front().refreshHz, m.monitors.front().hdrEnabled ? " \xC2\xB7 HDR" : "");
     for (const auto& mo : m.monitors)
         if (mo.primary) mon = std::format("{} \xC2\xB7 {:.0f} Hz{}", resolutionText(mo.width, mo.height), mo.refreshHz, mo.hdrEnabled ? " \xC2\xB7 HDR" : "");
-    std::string gfn = m.gfn.state != GfnState::NotRunning ? tr("Connected") : (m.gfnExecutable.empty() ? "Not found" : "Installed (not running)");
+    std::string gfn = m.gfn.state != GfnState::NotRunning ? tr("Connected") : (m.gfnExecutable.empty() ? tr("Not found") : tr("Installed (not running)"));
     struct Step {
         const char* title;
         std::string detail;
@@ -168,6 +174,7 @@ bool drawFirstRun(PageContext& c, float t) {
         ImGui::SetCursorScreenPos(ImVec2(p.x + 40 * sc, p.y));
         ImGui::BeginGroup();
         textColored(i <= done ? col::Text : col::TextMute, steps[i].title, kFontBody, true);
+        englishHint(steps[i].title, kFontBody);
         if (i < done) textWrappedDim(steps[i].detail.c_str());
         ImGui::EndGroup();
         ImGui::SetCursorScreenPos(ImVec2(p.x, std::max(ImGui::GetCursorScreenPos().y, p.y + 46 * sc)));

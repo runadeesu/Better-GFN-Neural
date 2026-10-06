@@ -408,7 +408,7 @@ bool Settings::sanitize() {
             ++it;
         }
     }
-    if (language != "auto" && language != "en" && language != "ja") {
+    if (language != "auto" && language != "en" && language != "ja" && language != "ja+en") {
         language = "auto";
         changed = true;
     }

@@ -63,13 +63,14 @@ void drawHomePage(PageContext& c) {
             subtitle = tr("GeForce NOW is running. Start a game to enhance it automatically.");
         } else if (enhancing) {
             title = std::string(tr("Enhancing")) + (m.currentGame.empty() ? "" : "  \xE2\x80\x94  " + m.currentGame);
-            subtitle = std::format("{}  \xC2\xB7  {} \xE2\x86\x92 {}  \xC2\xB7  {:.0f} fps", toString(e.upscaler), resolutionText(e.procW, e.procH),
+            subtitle = std::format("{}  \xC2\xB7  {} \xE2\x86\x92 {}  \xC2\xB7  {:.0f} fps", tr(toString(e.upscaler)), resolutionText(e.procW, e.procH),
                                    resolutionText(e.outW, e.outH), e.outputFps);
         } else {
             title = m.currentGame.empty() ? std::string("GeForce NOW") : m.currentGame;
-            subtitle = e.lastError.empty() ? tr("Ready - switch to GeForce NOW to see the enhanced picture") : e.lastError;
+            subtitle = e.lastError.empty() ? tr("Ready - switch to GeForce NOW to see the enhanced picture") : trText(e.lastError);
         }
         textColored(col::Text, title.c_str(), kFontHero, true);
+        if (const char* en = englishFor(title.c_str())) textColored(col::TextMute, en, kFontSmall);
         textColored(col::TextDim, subtitle.c_str(), kFontBody);
         ImGui::Dummy(ImVec2(0, 4 * sc));
         pill(s.autoMode ? (std::string(tr("Auto Mode")) + "  " + tr("On")).c_str() : (std::string(tr("Auto Mode")) + "  " + tr("Off")).c_str(),
@@ -86,7 +87,7 @@ void drawHomePage(PageContext& c) {
         }
         if (m.safeMode) {
             ImGui::SameLine();
-            pill("SAFE MODE", col::Error);
+            pill(tr("SAFE MODE"), col::Error);
         }
         ImGui::Dummy(ImVec2(0, 6 * sc));
         if (m.gfn.state == GfnState::NotRunning) {
@@ -94,7 +95,7 @@ void drawHomePage(PageContext& c) {
             if (!m.launchError.empty()) {
                 ImGui::SameLine();
                 ImGui::AlignTextToFramePadding();
-                textColored(col::Warn, m.launchError.c_str(), kFontSmall);
+                textColored(col::Warn, trText(m.launchError).c_str(), kFontSmall);
             }
         } else if (m.awaitingManualStart && s.enhancementEnabled) {
             if (primaryButton(tr("Start enhancement")) && c.actions.startEnhancement) c.actions.startEnhancement();
@@ -121,17 +122,17 @@ void drawHomePage(PageContext& c) {
     };
     const char* gfnState = m.gfn.state == GfnState::NotRunning ? tr("Waiting") : (m.gfn.state == GfnState::Connected ? tr("Connected") : tr("Enhancing"));
     if (m.gfn.state == GfnState::Streaming && !enhancing) gfnState = tr("Connected");
-    tile(0, "GFN STATUS", gfnState, m.gfn.fromBrowser ? "Browser" : (m.gfn.pid ? "GeForce NOW" : "-"), stateColor(m.gfn.state, enhancing), Icon::Bolt);
+    tile(0, "GFN STATUS", gfnState, m.gfn.fromBrowser ? tr("Browser") : (m.gfn.pid ? "GeForce NOW" : "-"), stateColor(m.gfn.state, enhancing), Icon::Bolt);
     tile(1, "CURRENT GAME", m.currentGame.empty() ? tr("No game") : m.currentGame, m.profileKey.empty() ? "" : std::string(tr("Game profiles")),
          col::Accent2, Icon::Gamepad);
     tile(2, "ENHANCEMENT STATUS", enhancing ? tr("Active") : (s.enhancementEnabled ? tr("Standby") : tr("Paused")),
-         enhancing ? std::string(toString(e.upscaler)) : e.state, enhancing ? col::Accent : col::Waiting, Icon::Spark);
-    tile(3, "AUTO MODE", s.autoMode ? tr("On") : tr("Off"), enhancing ? e.tierName : std::string(presetName(s.preset)), s.autoMode ? col::Accent : col::Waiting,
+         enhancing ? std::string(tr(toString(e.upscaler))) : trText(e.state), enhancing ? col::Accent : col::Waiting, Icon::Spark);
+    tile(3, "AUTO MODE", s.autoMode ? tr("On") : tr("Off"), enhancing ? trText(e.tierName) : std::string(presetName(s.preset)), s.autoMode ? col::Accent : col::Waiting,
          Icon::Gauge);
     tile(4, "OUTPUT RESOLUTION", enhancing ? resolutionText(e.outW, e.outH) : std::string("-"),
          enhancing ? std::format("{} {}", "\xE2\x86\x90", resolutionText(e.captureW, e.captureH)) : "", col::Accent2, Icon::Monitor);
     tile(5, "OUTPUT FPS", enhancing ? std::format("{:.0f}", e.outputFps) : std::string("-"),
-         enhancing ? std::format("in {:.0f} fps{}", e.inputFps, e.frameGenActive ? "  \xC2\xB7  2x" : "") : "", col::Accent, Icon::Chart);
+         enhancing ? trf("in {:.0f} fps{}", e.inputFps, e.frameGenActive ? "  \xC2\xB7  2x" : "") : "", col::Accent, Icon::Chart);
     tile(6, "LATENCY", enhancing ? std::format("+{:.1f} ms", e.addedLatencyMs) : std::string("-"), tr("Added latency"),
          e.addedLatencyMs > 14 ? col::Warn : col::Accent, Icon::Bolt);
     std::string gpu = e.gpuName.empty() ? (m.gpus.empty() ? std::string(tr("No hardware GPU")) : m.gpus.front().name) : e.gpuName;

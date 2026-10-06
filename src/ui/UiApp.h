@@ -65,7 +65,7 @@ private:
     int width_ = 0, height_ = 0;
     bool minimized_ = false;
     // Title bar interaction rects (client coords) for hit testing
-    RECT minBtn_{}, closeBtn_{};
+    RECT minBtn_{}, closeBtn_{}, langBtn_{};
     float titleHeight_ = 46.0f;
     double lastFrame_ = 0;
 };

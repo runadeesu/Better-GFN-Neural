@@ -108,7 +108,9 @@ New-Item -ItemType Directory -Force -Path $shots | Out-Null
 $p = Start-Process -FilePath $Exe -ArgumentList @("--automation", "screenshots", "--seconds", "3", "--data-dir", "`"$(Join-Path $OutDir 'data_shots')`"", "--output", "`"$(Join-Path $shots 'report.json')`"") -PassThru
 $p.WaitForExit(120000) | Out-Null
 $pngs = Get-ChildItem $shots -Filter "*.png" -ErrorAction SilentlyContinue
-Check "ui_screenshots" ($pngs.Count -ge 7) "png files: $($pngs.Count)"
+Check "ui_screenshots" ($pngs.Count -ge 24) "png files: $($pngs.Count) (English, Japanese, Japanese + English)"
+$jaShots = @($pngs | Where-Object { $_.Name -like "*_ja.png" })
+Check "ui_screenshots_japanese" ($jaShots.Count -ge 8) "Japanese png files: $($jaShots.Count)"
 
 $results | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $OutDir "integration_results.json")
 if ($failures.Count -gt 0) {

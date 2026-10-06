@@ -18,8 +18,8 @@ bool drawEnhancementEditor(EnhancementSettings& e, const char* scope) {
     // ---- Left column -----------------------------------------------------
     ImGui::BeginGroup();
     beginCard("nsr", ImVec2(colW, 0));
-    sectionTitle(tr("Neural Super Resolution"),
-                 "Real-time CNN (trained in-house) reconstructs detail when the stream is lower resolution than your display. Not DLSS: GeForce NOW does not expose game motion vectors to local apps.");
+    sectionTitle("Neural Super Resolution",
+                 tr("Real-time CNN (trained in-house) reconstructs detail when the stream is lower resolution than your display. Not DLSS: GeForce NOW does not expose game motion vectors to local apps."));
     label(tr("Upscaling mode"));
     {
         const char* items[] = {tr("Auto"), tr("Quality"), tr("Balanced"), tr("Performance"), tr("Native")};
@@ -28,19 +28,19 @@ bool drawEnhancementEditor(EnhancementSettings& e, const char* scope) {
             e.upscale = UpscaleMode(v);
             changed = true;
         }
-        textWrappedDim("Quality = Neural SR (L)   Balanced = Neural SR (S)   Performance = Lanczos-AR (non-neural)   Native = no upscaling");
+        textWrappedDim(tr("Quality = Neural SR (L)   Balanced = Neural SR (S)   Performance = Lanczos-AR (non-neural)   Native = no upscaling"));
     }
     endCard();
 
     beginCard("clean", ImVec2(colW, 0));
-    sectionTitle(tr("Stream Compression Cleanup"), "Removes macroblocking, banding, mosquito noise and dark-scene artifacts from the video stream.");
-    changed |= featureRow(tr("Blocking / macroblock cleanup"), e.deblock, "Smooths compression block edges in flat regions while keeping real edges.");
-    changed |= featureRow(tr("Banding reduction"), e.deband, "Rebuilds smooth gradients (sky, fog, dark scenes) and dithers the output.");
-    changed |= featureRow(tr("Compression & mosquito noise reduction"), e.denoise, "Edge-aware denoise, stronger around edges where ringing appears and in dark scenes.");
+    sectionTitle(tr("Stream Compression Cleanup"), tr("Removes macroblocking, banding, mosquito noise and dark-scene artifacts from the video stream."));
+    changed |= featureRow(tr("Blocking / macroblock cleanup"), e.deblock, tr("Smooths compression block edges in flat regions while keeping real edges."));
+    changed |= featureRow(tr("Banding reduction"), e.deband, tr("Rebuilds smooth gradients (sky, fog, dark scenes) and dithers the output."));
+    changed |= featureRow(tr("Compression & mosquito noise reduction"), e.denoise, tr("Edge-aware denoise, stronger around edges where ringing appears and in dark scenes."));
     endCard();
 
     beginCard("temporal", ImVec2(colW, 0));
-    sectionTitle(tr("Temporal Reconstruction"), "Stabilizes thin lines, text, foliage, fences and distant detail across frames using optical flow; rejects history on disocclusion to avoid ghosting.");
+    sectionTitle(tr("Temporal Reconstruction"), tr("Stabilizes thin lines, text, foliage, fences and distant detail across frames using optical flow; rejects history on disocclusion to avoid ghosting."));
     changed |= featureRow(tr("Temporal stabilization & anti-flicker"), e.temporal);
     endCard();
     ImGui::EndGroup();
@@ -50,13 +50,13 @@ bool drawEnhancementEditor(EnhancementSettings& e, const char* scope) {
     // ---- Right column ----------------------------------------------------
     ImGui::BeginGroup();
     beginCard("deblur", ImVec2(colW, 0));
-    sectionTitle(tr("Deblur"), "Recovers edges and texture lost to motion and stream softening. Strength adapts to motion speed automatically.");
+    sectionTitle(tr("Deblur"), tr("Recovers edges and texture lost to motion and stream softening. Strength adapts to motion speed automatically."));
     changed |= featureRow(tr("Adaptive deblur"), e.deblur);
     changed |= toggleRow(tr("Motion deblur (follows optical flow)"), &e.motionDeblur);
     endCard();
 
     beginCard("sharp", ImVec2(colW, 0));
-    sectionTitle(tr("Adaptive Sharpening"), "Content-aware: more detail when still, less during fast motion, extra clarity for text/HUD, gentle on skin.");
+    sectionTitle(tr("Adaptive Sharpening"), tr("Content-aware: more detail when still, less during fast motion, extra clarity for text/HUD, gentle on skin."));
     changed |= featureRow(tr("Sharpness"), e.sharpen);
     changed |= toggleRow(tr("Text & HUD clarity boost"), &e.textBoost);
     changed |= toggleRow(tr("Protect skin tones"), &e.skinProtect);
@@ -64,7 +64,7 @@ bool drawEnhancementEditor(EnhancementSettings& e, const char* scope) {
 
     beginCard("fg", ImVec2(colW, 0));
     sectionTitle(tr("Frame Interpolation"),
-                 "Optical-flow frame interpolation (not neural). Auto enables it only when your display refresh rate allows extra frames and the added latency stays within budget. HUD pixels that do not move are never warped.");
+                 tr("Optical-flow frame interpolation (not neural). Auto enables it only when your display refresh rate allows extra frames and the added latency stays within budget. HUD pixels that do not move are never warped."));
     {
         const char* items[] = {tr("Off"), tr("Auto"), "2x"};
         int v = int(e.frameGen);
@@ -78,7 +78,7 @@ bool drawEnhancementEditor(EnhancementSettings& e, const char* scope) {
 
     // ---- Color (full width) -------------------------------------------------
     beginCard("color", ImVec2(W, 0));
-    sectionTitle(tr("HDR+ / Color"), "HDR+ expands bright highlights on HDR displays; on SDR displays the same pipeline provides SDR Enhancement. Auto keeps saturation and black levels natural.");
+    sectionTitle(tr("HDR+ / Color"), tr("HDR+ expands bright highlights on HDR displays; on SDR displays the same pipeline provides SDR Enhancement. Auto keeps saturation and black levels natural."));
     {
         const float half = (ImGui::GetContentRegionAvail().x - gap) * 0.5f;
         ImGui::BeginChild("colorL", ImVec2(half, 0), ImGuiChildFlags_AutoResizeY, ImGuiWindowFlags_NoBackground);
@@ -141,9 +141,9 @@ void drawEnhancementPage(PageContext& c) {
             c.actions.settingsChanged();
         }
         if (toggleRow(tr("Auto Mode"), &s.autoMode,
-                      "Monitors GPU time, VRAM, frame rates, refresh rate, GPU load and latency, and continuously picks the best quality tier. When the PC is too slow it lowers quality step by step instead of turning enhancement off."))
+                      tr("Monitors GPU time, VRAM, frame rates, refresh rate, GPU load and latency, and continuously picks the best quality tier. When the PC is too slow it lowers quality step by step instead of turning enhancement off.")))
             c.actions.settingsChanged();
-        if (toggleRow(tr("Low Latency Mode"), &s.lowLatency, "Minimal queueing (1 frame), immediate presentation, tighter latency budget for interpolation."))
+        if (toggleRow(tr("Low Latency Mode"), &s.lowLatency, tr("Minimal queueing (1 frame), immediate presentation, tighter latency budget for interpolation.")))
             c.actions.settingsChanged();
         label(tr("Stream resolution"));
         const char* sr[] = {tr("Auto"), tr("Native"), "720p", "1080p", "1440p"};
@@ -152,7 +152,7 @@ void drawEnhancementPage(PageContext& c) {
             s.streamResolution = StreamResolution(v);
             c.actions.settingsChanged();
         }
-        textWrappedDim("When GeForce NOW fills the screen it scales the stream itself. Auto detects the real stream resolution and reconstructs it with Neural SR.");
+        textWrappedDim(tr("When GeForce NOW fills the screen it scales the stream itself. Auto detects the real stream resolution and reconstructs it with Neural SR."));
     }
     endCard();
     ImGui::Dummy(ImVec2(0, 2 * sc));

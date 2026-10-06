@@ -142,7 +142,7 @@ struct Settings {
     std::string gfnExecutableOverride;
 
     LogLevel logLevel = LogLevel::Info;
-    std::string language = "auto"; // "auto", "en", "ja"
+    std::string language = "auto"; // "auto", "en", "ja", "ja+en" (Japanese with English labels)
 
     std::map<std::string, GameProfile> profiles;
     BenchmarkResult benchmark;

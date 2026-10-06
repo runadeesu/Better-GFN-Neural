@@ -480,8 +480,15 @@ int Application::run() {
     if (cmd_.automation == "screenshots" && !cmd_.outputJson.empty()) {
         std::filesystem::path dir = std::filesystem::path(widen(cmd_.outputJson)).parent_path();
         const char* names[] = {"home", "enhancement", "display", "games", "performance", "benchmark", "settings"};
-        for (int i = 0; i < int(ui::Page::Count); ++i) ui_.renderToPng(dir / (std::string("ui_") + names[i] + ".png"), 1440, 900, ui::Page(i));
-        ui_.renderToPng(dir / "ui_first_run.png", 1440, 900, ui::Page::Home, true);
+        // English (ui_home.png), Japanese (ui_home_ja.png) and bilingual (ui_home_ja_en.png)
+        const std::pair<UiLanguage, const char*> langs[] = {{UiLanguage::English, ""}, {UiLanguage::Japanese, "_ja"}, {UiLanguage::Bilingual, "_ja_en"}};
+        for (const auto& [lang, suffix] : langs) {
+            setUiLanguage(lang);
+            for (int i = 0; i < int(ui::Page::Count); ++i)
+                ui_.renderToPng(dir / (std::string("ui_") + names[i] + suffix + ".png"), 1440, 900, ui::Page(i));
+            ui_.renderToPng(dir / (std::string("ui_first_run") + suffix + ".png"), 1440, 900, ui::Page::Home, true);
+        }
+        applyLanguage();
     }
     writeAutomationReport();
     shutdown();

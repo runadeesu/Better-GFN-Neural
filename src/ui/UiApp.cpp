@@ -233,7 +233,7 @@ LRESULT UiApp::hitTest(int sx, int sy) {
         if (bottom) return HTBOTTOM;
     }
     if (pt.y < LONG(titleHeight_)) {
-        if (PtInRect(&minBtn_, pt) || PtInRect(&closeBtn_, pt)) return HTCLIENT;
+        if (PtInRect(&minBtn_, pt) || PtInRect(&closeBtn_, pt) || PtInRect(&langBtn_, pt)) return HTCLIENT;
         return HTCAPTION;
     }
     return HTCLIENT;
@@ -304,7 +304,7 @@ void UiApp::drawTitleBar(float width) {
     float tx = 50 * s + ImGui::CalcTextSize("Better GFN Neural").x + 10 * s;
     ImGui::PopFont();
     ImGui::PushFont(fonts().regular, kFontLabel);
-    std::string ver = std::string("v") + kVersionString + "  \xC2\xB7  Unofficial";
+    std::string ver = std::string("v") + kVersionString + "  \xC2\xB7  " + tr("Unofficial");
     dl->AddText(ImVec2(tx, (titleHeight_ - ImGui::GetFontSize()) * 0.5f + 1), col::TextMute, ver.c_str());
     ImGui::PopFont();
 
@@ -321,6 +321,42 @@ void UiApp::drawTitleBar(float width) {
     };
     if (button("##close", width - bw, Icon::Close, true, closeBtn_)) SendMessageW(hwnd_, WM_CLOSE, 0, 0);
     if (button("##min", width - 2 * bw, Icon::Minimize, false, minBtn_)) ShowWindow(hwnd_, SW_MINIMIZE);
+
+    // One-click language switch (日本語 / English / 日本語 + English)
+    struct LangChip {
+        const char* text;
+        const char* value;
+        UiLanguage lang;
+    } chips[] = {{"\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E", "ja", UiLanguage::Japanese},
+                 {"English", "en", UiLanguage::English},
+                 {"\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E + EN", "ja+en", UiLanguage::Bilingual}};
+    ImGui::PushFont(fonts().semibold, kFontLabel);
+    const float padX = 10 * s, chipH = 26 * s, gap = 2 * s;
+    float total = 0;
+    for (const auto& c : chips) total += ImGui::CalcTextSize(c.text).x + 2 * padX + gap;
+    const float x0 = width - 2 * bw - 14 * s - total, y0 = (titleHeight_ - chipH) * 0.5f;
+    dl->AddRectFilled(ImVec2(x0 - 3 * s, y0 - 3 * s), ImVec2(x0 + total + 1 * s, y0 + chipH + 3 * s), col::rgba(13, 18, 25), (chipH + 6 * s) * 0.5f);
+    float x = x0;
+    for (const auto& c : chips) {
+        const float w = ImGui::CalcTextSize(c.text).x + 2 * padX;
+        ImGui::SetCursorPos(ImVec2(x, y0));
+        ImGui::PushID(c.value);
+        const bool pressed = ImGui::InvisibleButton("##lang", ImVec2(w, chipH));
+        const bool hov = ImGui::IsItemHovered();
+        ImGui::PopID();
+        const bool sel = uiLanguage() == c.lang;
+        if (sel) dl->AddRectFilled(ImVec2(x, y0), ImVec2(x + w, y0 + chipH), col::Accent, chipH * 0.5f);
+        else if (hov) dl->AddRectFilled(ImVec2(x, y0), ImVec2(x + w, y0 + chipH), col::CardHover, chipH * 0.5f);
+        dl->AddText(ImVec2(x + padX, y0 + (chipH - ImGui::GetFontSize()) * 0.5f), sel ? col::Bg0 : (hov ? col::Text : col::TextDim), c.text);
+        if (pressed && settings_ && !sel) {
+            settings_->language = c.value;
+            if (actions_ && actions_->settingsChanged) actions_->settingsChanged();
+            if (actions_ && actions_->languageChanged) actions_->languageChanged();
+        }
+        x += w + gap;
+    }
+    ImGui::PopFont();
+    langBtn_ = RECT{LONG(x0 - 3 * s), 0, LONG(x0 + total + 1 * s), LONG(titleHeight_)};
 }
 
 void UiApp::drawSidebar(float height) {
@@ -353,8 +389,23 @@ void UiApp::drawSidebar(float height) {
             dl->AddRectFilled(a, b, col::CardHover, 10 * s);
         }
         drawIcon(dl, it.icon, ImVec2(a.x + 24 * s, a.y + 21 * s), 18 * s, sel ? col::Accent : col::TextDim);
+        const char* shown = tr(it.label);
+        const char* en = englishFor(shown);
         ImGui::PushFont(sel ? fonts().semibold : fonts().regular, kFontBody);
-        dl->AddText(ImVec2(a.x + 46 * s, a.y + (42 * s - ImGui::GetFontSize()) * 0.5f), sel ? col::Text : col::TextDim, tr(it.label));
+        const float mainH = ImGui::GetFontSize();
+        if (en) {
+            // Bilingual: Japanese on top, English underneath
+            ImGui::PushFont(fonts().regular, kFontLabel);
+            const float subH = ImGui::GetFontSize();
+            ImGui::PopFont();
+            const float top = a.y + (42 * s - mainH - subH) * 0.5f;
+            dl->AddText(ImVec2(a.x + 46 * s, top), sel ? col::Text : col::TextDim, shown);
+            ImGui::PushFont(fonts().regular, kFontLabel);
+            dl->AddText(ImVec2(a.x + 46 * s, top + mainH), col::TextMute, en);
+            ImGui::PopFont();
+        } else {
+            dl->AddText(ImVec2(a.x + 46 * s, a.y + (42 * s - mainH) * 0.5f), sel ? col::Text : col::TextDim, shown);
+        }
         ImGui::PopFont();
         y += 48 * s;
     }
@@ -391,7 +442,7 @@ void UiApp::buildUi(float width, float height) {
     PageContext ctx{*settings_, *model_, *actions_, page_};
     if (!model_->notice.empty()) {
         beginCard("notice", ImVec2(ImGui::GetContentRegionAvail().x, 0));
-        textColored(col::Warn, model_->notice.c_str(), kFontBody, true);
+        textColored(col::Warn, trText(model_->notice).c_str(), kFontBody, true);
         endCard();
     }
     switch (page_) {
