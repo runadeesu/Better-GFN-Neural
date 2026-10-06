@@ -10,6 +10,7 @@ expose them to local applications).
 
 | File | Content |
 |---|---|
+| `nsr_t_x2.json` | NSR-T (Tiny) weights + metadata + validation metrics |
 | `nsr_s_x2.json` | NSR-S weights + metadata + validation metrics |
 | `nsr_l_x2.json` | NSR-L weights + metadata + validation metrics |
 | `training_log_nsr_*.txt` | full training logs |
@@ -26,8 +27,14 @@ expose them to local applications).
 
 | | C | D | Parameters | MAC per low-res pixel |
 |---|---|---|---|---|
+| NSR-T | 4 | 1 | 336 | ≈0.3 k |
 | NSR-S | 8 | 2 | 1,540 | ≈1.5 k |
 | NSR-L | 16 | 3 | 7,700 | ≈7.6 k |
+
+NSR-T is meant for integrated and older GPUs (quality tiers 1-2). It runs all
+three layers in one compute pass (`shaders/nsr_tiny.hlsl`): a 16×16 tile plus a
+3 px halo is processed in group-shared memory, so no activation textures are
+written or read and the memory traffic stays close to a bicubic upscale.
 
 ## Training data
 
@@ -56,6 +63,7 @@ Charbonnier loss on Y, Adam (lr 2e-3, 500-step warm-up, cosine decay), batch 16,
 |---|---|---|
 | Bilinear | 29.96 dB | 28.88 dB |
 | Catmull-Rom | 30.92 dB | 29.19 dB |
+| **NSR-T** | **31.38 dB** | **29.43 dB** |
 | **NSR-S** | **32.03 dB** | **29.72 dB** |
 | **NSR-L** | **32.70 dB** | **30.12 dB** |
 
@@ -75,4 +83,5 @@ g++ -std=c++17 -O3 -march=native -ffast-math -pthread -Ithird_party/stb tools/ns
 ./nsr_trainer --data <kodak png dir> --font DejaVuSans.ttf --font <japanese font> \
     --name nsr_s_x2 --channels 8 --hidden 2 --iters 60000 --out-root .
 ./nsr_trainer ... --name nsr_l_x2 --channels 16 --hidden 3 --iters 50000 --out-root .
+./nsr_trainer ... --name nsr_t_x2 --channels 4 --hidden 1 --iters 60000 --out-root .
 ```

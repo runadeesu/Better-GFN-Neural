@@ -1,4 +1,6 @@
 #include <format>
+#include <string>
+#include <vector>
 
 #include "ui/I18n.h"
 #include "ui/Pages.h"
@@ -171,6 +173,48 @@ void drawEnhancementPage(PageContext& c) {
             c.actions.settingsChanged();
         }
         textWrappedDim(tr("When GeForce NOW fills the screen it scales the stream itself. Auto detects the real stream resolution and reconstructs it with Neural SR."));
+    }
+    endCard();
+    ImGui::Dummy(ImVec2(0, 2 * sc));
+
+    // ---- My presets ----------------------------------------------------------
+    beginCard("mypresets", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+    sectionTitle(tr("My presets"), tr("Save the current enhancement settings under a name and switch between your own looks in one click."));
+    {
+        static int selected = 0;
+        static char name[64] = {};
+        std::vector<std::string> names;
+        for (const auto& [n, e] : s.userPresets) names.push_back(n);
+        if (selected >= int(names.size())) selected = 0;
+        if (!names.empty()) {
+            std::vector<const char*> ptrs;
+            for (auto& n : names) ptrs.push_back(n.c_str());
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.45f);
+            ImGui::Combo("##mypreset", &selected, ptrs.data(), int(ptrs.size()));
+            ImGui::SameLine();
+            if (primaryButton(tr("Apply"))) {
+                s.enhancement = s.userPresets[names[size_t(selected)]];
+                c.actions.settingsChanged();
+            }
+            ImGui::SameLine();
+            if (secondaryButton(tr("Delete"))) {
+                s.userPresets.erase(names[size_t(selected)]);
+                selected = 0;
+                c.actions.settingsChanged();
+            }
+        } else {
+            textWrappedDim(tr("No presets saved yet."));
+        }
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.45f);
+        ImGui::InputTextWithHint("##presetname", tr("Preset name"), name, sizeof(name));
+        ImGui::SameLine();
+        ImGui::BeginDisabled(name[0] == 0 || s.userPresets.size() >= 50);
+        if (secondaryButton(tr("Save current settings"))) {
+            s.userPresets[name] = s.enhancement;
+            name[0] = 0;
+            c.actions.settingsChanged();
+        }
+        ImGui::EndDisabled();
     }
     endCard();
     ImGui::Dummy(ImVec2(0, 2 * sc));

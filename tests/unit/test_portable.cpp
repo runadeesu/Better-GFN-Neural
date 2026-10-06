@@ -21,6 +21,7 @@
 #include "settings/Settings.h"
 #include "settings/SettingsStore.h"
 #include "telemetry/RollingStats.h"
+#include "telemetry/OsdText.h"
 #include "telemetry/SessionHistory.h"
 #include "telemetry/StreamQuality.h"
 #include "ui/I18n.h"
@@ -901,6 +902,35 @@ TEST_CASE("session_history") {
     CHECK(sum[0].totalSec >= sum[1].totalSec);
     for (int i = 0; i < 600; ++i) appendHistory(h, r);
     CHECK_EQ(h.size(), kMaxHistoryRecords);
+}
+
+TEST_CASE("osd_text") {
+    OsdData d;
+    d.inputFps = 60;
+    d.outputFps = 120;
+    d.gpuMs = 3.25;
+    d.addedLatencyMs = 8.6;
+    d.streamQuality = 82;
+    d.tier = 2;
+    d.upscaler = "NSR-T";
+    d.frameGen = true;
+    auto lines = formatOsd(d);
+    CHECK_EQ(lines.size(), size_t(3));
+    CHECK(lines[0].find("60") != std::string::npos && lines[0].find("120") != std::string::npos && lines[0].find("2x") != std::string::npos);
+    CHECK(lines[2].find("Q82") != std::string::npos && lines[2].find("NSR-T") != std::string::npos);
+    d.concealed = 5;
+    d.upscaler = "\xE6\x97\xA5"; // non-ASCII is replaced
+    lines = formatOsd(d);
+    CHECK_EQ(lines.size(), size_t(4));
+    for (const auto& l : lines)
+        for (char ch : l) CHECK(static_cast<unsigned char>(ch) >= 32 && static_cast<unsigned char>(ch) <= 126);
+    uint32_t words[kOsdMaxChars / 4];
+    int cols = 0, rows = 0;
+    packOsdText({"AB", "CDE"}, cols, rows, words);
+    CHECK_EQ(cols, 3);
+    CHECK_EQ(rows, 2);
+    CHECK_EQ(words[0], uint32_t('A') | uint32_t('B') << 8 | uint32_t(' ') << 16 | uint32_t('C') << 24);
+    CHECK_EQ(words[1] & 0xFFFFu, uint32_t('D') | uint32_t('E') << 8);
 }
 
 TEST_CASE("command_line") {

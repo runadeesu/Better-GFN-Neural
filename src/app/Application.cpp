@@ -3,6 +3,7 @@
 #include <dbt.h>
 #include <shellapi.h>
 #include <shlobj.h>
+#include <commdlg.h>
 
 #include <algorithm>
 #include <ctime>
@@ -195,9 +196,11 @@ void Application::setupActions() {
             return;
         }
         model_.historyExport = narrow(file.wstring());
-        const std::wstring args = L"/select,\"" + file.wstring() + L"\"";
-        ShellExecuteW(nullptr, L"open", L"explorer.exe", args.c_str(), nullptr, SW_SHOWNORMAL);
+        ShellExecuteW(nullptr, L"open", L"explorer.exe", (L"/select,\"" + file.wstring() + L"\"").c_str(), nullptr, SW_SHOWNORMAL);
     };
+    actions_.exportSettings = [this] { exportSettings(); };
+    actions_.importSettings = [this] { importSettings(); };
+    actions_.createDiagnostics = [this] { createDiagnostics(); };
     actions_.clearHistory = [this] {
         history_.clear();
         model_.history.clear();
@@ -233,6 +236,116 @@ void Application::takeScreenshot() {
     r.baseName = screenshotBaseName(currentGame_.empty() ? std::string("GeForce NOW") : currentGame_, lt);
     r.comparison = settings_.screenshotComparison;
     engine_.requestScreenshot(r);
+}
+
+std::filesystem::path Application::documentsFolder() const {
+    PWSTR p = nullptr;
+    std::filesystem::path dir = paths_.dataDir;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &p)) && p) dir = std::filesystem::path(p) / L"Better GFN Neural";
+    if (p) CoTaskMemFree(p);
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    return dir;
+}
+
+std::string Application::timeStamp() {
+    std::time_t now = std::time(nullptr);
+    std::tm lt{};
+    localtime_s(&lt, &now);
+    return std::format("{:04}{:02}{:02}_{:02}{:02}{:02}", lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec);
+}
+
+static void revealInExplorer(const std::filesystem::path& file) {
+    const std::wstring args = L"/select,\"" + file.wstring() + L"\"";
+    ShellExecuteW(nullptr, L"open", L"explorer.exe", args.c_str(), nullptr, SW_SHOWNORMAL);
+}
+
+void Application::exportSettings() {
+    const std::filesystem::path file = documentsFolder() / widen("settings_backup_" + timeStamp() + ".json");
+    std::ofstream f(file, std::ios::binary | std::ios::trunc);
+    f << settingsToJson(settings_);
+    f.close();
+    if (f.fail()) {
+        model_.notice = "The settings backup could not be written.";
+        return;
+    }
+    model_.lastExport = narrow(file.wstring());
+    revealInExplorer(file);
+    BGN_LOG_INFO("App", "settings exported");
+}
+
+void Application::importSettings() {
+    wchar_t path[MAX_PATH] = {};
+    OPENFILENAMEW ofn{};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = ui_.hwnd();
+    ofn.lpstrFilter = L"Better GFN Neural settings (*.json)\0*.json\0All files\0*.*\0";
+    ofn.lpstrFile = path;
+    ofn.nMaxFile = MAX_PATH;
+    const std::wstring initial = documentsFolder().wstring();
+    ofn.lpstrInitialDir = initial.c_str();
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+    if (!GetOpenFileNameW(&ofn)) return;
+    std::ifstream f(std::filesystem::path(path), std::ios::binary);
+    std::string text((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    Settings imported;
+    std::string err;
+    if (text.empty() || !settingsFromJson(text, imported, &err)) {
+        model_.notice = "The selected file is not a valid Better GFN Neural settings file.";
+        BGN_LOG_WARN("App", "settings import failed: {}", err);
+        return;
+    }
+    const bool sw = settings_.startWithWindows;
+    imported.firstRunCompleted = true;
+    settings_ = imported;
+    if (settings_.startWithWindows != sw) setStartWithWindows(settings_.startWithWindows, paths_.exePath);
+    applyLanguage();
+    model_.notice = "Settings imported.";
+    markDirty();
+    BGN_LOG_INFO("App", "settings imported");
+}
+
+void Application::createDiagnostics() {
+    std::string r;
+    r += std::format("Better GFN Neural {} diagnostics ({} mode)\n\n", kVersionString, paths_.portable ? "portable" : "installed");
+    {
+        wchar_t product[128] = {}, display[64] = {}, build[32] = {};
+        DWORD n = sizeof(product);
+        RegGetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"ProductName", RRF_RT_REG_SZ, nullptr, product, &n);
+        n = sizeof(display);
+        RegGetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"DisplayVersion", RRF_RT_REG_SZ, nullptr, display, &n);
+        n = sizeof(build);
+        RegGetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"CurrentBuildNumber", RRF_RT_REG_SZ, nullptr, build, &n);
+        r += std::format("Windows: {} {} (build {})\n", narrow(product), narrow(display), narrow(build));
+    }
+    for (const auto& g : model_.gpus)
+        r += std::format("GPU: {} [{}], {:.0f} MB, driver {}, start tier {}\n", g.name, g.family, g.dedicatedVramMB, g.driverVersion,
+                         estimateTierForGpu(g.vendorId, g.name, g.dedicatedVramMB / 1024.0));
+    for (const auto& m : model_.monitors) r += "Monitor: " + describeMonitor(m) + "\n";
+    r += std::format("Controllers: {}\nPower: {}{}\n", model_.controllers.size(), model_.system.onBattery ? "battery" : "AC",
+                     model_.system.batteryPercent >= 0 ? std::format(" ({}%)", model_.system.batteryPercent) : std::string());
+    const EngineStats& e = model_.engine;
+    r += std::format("\nEngine: {} | capture {} | present {}\n", e.state, e.captureBackend, e.presentPath);
+    r += std::format("Rates: input {:.1f} fps, output {:.1f} fps | GPU {:.2f} ms avg, {:.2f} p95 | added latency {:.1f} ms\n", e.inputFps, e.outputFps, e.gpuMsAvg,
+                     e.gpuMsP95, e.addedLatencyMs);
+    r += std::format("Tier {} ({}) | upscaler {} | frame interpolation {} | stutter smoothing {} frames | stream quality {}\n", e.tier, e.tierName,
+                     toString(e.upscaler), e.frameGenActive ? "active" : "off", e.concealedFrames,
+                     e.streamQualityValid ? std::format("{:.0f}", e.streamQuality) : std::string("-"));
+    if (settings_.benchmark.valid)
+        r += std::format("Benchmark: {} - {:.2f} ms, recommended {}\n", settings_.benchmark.gpuName, settings_.benchmark.avgMs, toString(settings_.benchmark.recommendedPreset));
+    r += "\n---- settings.json ----\n" + Log::sanitize(settingsToJson(settings_)) + "\n\n---- recent log ----\n";
+    for (const auto& l : Log::recent(400)) r += std::format("{} [{}] {}: {}\n", l.time, toString(l.level), l.module, l.message);
+    const std::filesystem::path file = documentsFolder() / widen("diagnostics_" + timeStamp() + ".txt");
+    std::ofstream f(file, std::ios::binary | std::ios::trunc);
+    f << r;
+    f.close();
+    if (f.fail()) {
+        model_.notice = "The diagnostics report could not be written.";
+        return;
+    }
+    model_.lastExport = narrow(file.wstring());
+    revealInExplorer(file);
+    BGN_LOG_INFO("App", "diagnostics report written");
 }
 
 void Application::saveHistory() {

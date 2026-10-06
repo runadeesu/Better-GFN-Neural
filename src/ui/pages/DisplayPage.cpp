@@ -48,6 +48,32 @@ void drawDisplayPage(PageContext& c) {
     endCard();
     ImGui::Dummy(ImVec2(0, 2 * sc));
 
+    beginCard("osd", ImVec2(W, 0));
+    sectionTitle(tr("In-game overlay (OSD)"), tr("Shows frame rates, GPU time, added latency, stream quality and the active AI model in a corner of the enhanced picture. It is not included in screenshots."));
+    if (toggleRow(tr("Show in-game overlay"), &s.osd.enabled)) c.actions.settingsChanged();
+    ImGui::BeginDisabled(!s.osd.enabled);
+    label(tr("Position"));
+    {
+        const char* items[] = {tr("Top left"), tr("Top right"), tr("Bottom left"), tr("Bottom right")};
+        int v = int(s.osd.position);
+        if (segmented("osdpos", &v, items, 4)) {
+            s.osd.position = OsdPosition(v);
+            c.actions.settingsChanged();
+        }
+    }
+    label(tr("Size"));
+    {
+        const char* items[] = {"1x", "2x", "3x", "4x"};
+        int v = s.osd.scale - 1;
+        if (segmented("osdscale", &v, items, 4)) {
+            s.osd.scale = v + 1;
+            c.actions.settingsChanged();
+        }
+    }
+    ImGui::EndDisabled();
+    endCard();
+    ImGui::Dummy(ImVec2(0, 2 * sc));
+
     beginCard("access", ImVec2(W, 0));
     sectionTitle(tr("Accessibility"),
                  tr("Color vision support shifts colors that are hard to tell apart into colors you can distinguish (daltonization). Night light reduces blue light. Both change only the enhanced picture."));

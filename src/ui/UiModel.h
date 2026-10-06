@@ -45,6 +45,7 @@ struct UiModel {
     std::string screenshotFolder;     // resolved folder (UTF-8)
     std::vector<SessionRecord> history; // oldest first
     std::string historyExport;          // path of the last CSV export
+    std::string lastExport;             // path of the last settings backup / diagnostics report
 };
 
 struct UiActions {
@@ -66,6 +67,9 @@ struct UiActions {
     std::function<void()> takeScreenshot;
     std::function<void()> openScreenshots;
     std::function<void()> exportHistory;
+    std::function<void()> exportSettings;
+    std::function<void()> importSettings;
+    std::function<void()> createDiagnostics;
     std::function<void()> clearHistory;
 };
 

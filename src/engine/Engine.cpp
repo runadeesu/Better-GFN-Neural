@@ -24,6 +24,7 @@
 #include "platform/Display.h"
 #include "renderer/OverlayPresenter.h"
 #include "telemetry/RollingStats.h"
+#include "telemetry/OsdText.h"
 #include "telemetry/StreamQuality.h"
 
 namespace bgn {
@@ -155,6 +156,8 @@ struct Engine::Session {
     StreamQualityTracker quality;
     double lastFrameArrival = 0;
     bool concealedSinceFrame = false;
+    OsdOverlay osd;
+    double lastOsd = 0;
     uint64_t concealed = 0;
     std::deque<float> histQuality;
     int batteryCap = kMaxTier;
@@ -603,24 +606,48 @@ void Engine::loopOnce(Session& s) {
                     s.cursorCaptured = false;
                 }
 
+                if (s.cfg.osd.enabled && tNow - s.lastOsd >= 0.25) {
+                    s.lastOsd = tNow;
+                    OsdData od;
+                    od.inputFps = s.inRate.rate(tNow);
+                    od.outputFps = s.outRate.rate(tNow);
+                    od.gpuMs = s.gpuMs.mean();
+                    od.addedLatencyMs = s.latency.mean();
+                    const StreamQuality q = s.quality.current();
+                    od.streamQuality = q.valid ? q.score : -1.0;
+                    od.tier = s.automode.tier();
+                    switch (s.pipeline.status().upscalerUsed) {
+                    case UpscalerKind::NsrT: od.upscaler = "NSR-T"; break;
+                    case UpscalerKind::NsrS: od.upscaler = "NSR-S"; break;
+                    case UpscalerKind::NsrL: od.upscaler = "NSR-L"; break;
+                    case UpscalerKind::LanczosAR: od.upscaler = "LANCZOS"; break;
+                    default: od.upscaler = "NATIVE"; break;
+                    }
+                    od.frameGen = s.automode.frameGen() && s.interpolated > 0;
+                    od.concealed = s.concealed;
+                    packOsdText(formatOsd(od), s.osd.cols, s.osd.rows, s.osd.words);
+                    s.osd.position = int(s.cfg.osd.position);
+                    s.osd.scale = s.cfg.osd.scale;
+                }
+                const OsdOverlay* osd = s.cfg.osd.enabled ? &s.osd : nullptr;
                 const PacingPlan pacing = computePacing(s.inRate.rate(tNow), s.mon.refreshHz, s.automode.frameGen());
                 HRESULT hr = S_OK;
                 const int bbW = s.presenter.width(), bbH = s.presenter.height();
                 if (pacing.useInterpolation && s.pipeline.interpolate(&s.timer)) {
                     s.presenter.waitForFrameSlot(20);
-                    s.pipeline.present(s.presenter.backBufferRtv(), bbW, bbH, s.plan.dst, true, s.presented * 2 + 1, false);
+                    s.pipeline.present(s.presenter.backBufferRtv(), bbW, bbH, s.plan.dst, true, s.presented * 2 + 1, false, osd);
                     hr = s.presenter.present(UINT(pacing.syncIntervalMid));
                     ++s.interpolated;
                     s.outRate.tick(qpcSeconds());
                     if (SUCCEEDED(hr)) {
                         s.presenter.waitForFrameSlot(40);
-                        s.pipeline.present(s.presenter.backBufferRtv(), bbW, bbH, s.plan.dst, false, s.presented * 2 + 2, false);
+                        s.pipeline.present(s.presenter.backBufferRtv(), bbW, bbH, s.plan.dst, false, s.presented * 2 + 2, false, osd);
                         s.timer.mark(s.device.context(), GpuStage::Present);
                         hr = s.presenter.present(UINT(pacing.syncIntervalReal));
                     }
                 } else {
                     s.presenter.waitForFrameSlot(s.cfg.lowLatency ? 4 : 20);
-                    s.pipeline.present(s.presenter.backBufferRtv(), bbW, bbH, s.plan.dst, false, s.presented * 2, false);
+                    s.pipeline.present(s.presenter.backBufferRtv(), bbW, bbH, s.plan.dst, false, s.presented * 2, false, osd);
                     s.timer.mark(s.device.context(), GpuStage::Present);
                     hr = s.presenter.present(s.cfg.lowLatency ? 0 : 1);
                 }
@@ -655,7 +682,7 @@ void Engine::loopOnce(Session& s) {
         s.concealedSinceFrame = true;
         if (s.pipeline.extrapolate(0.5f, nullptr)) {
             s.presenter.waitForFrameSlot(4);
-            s.pipeline.present(s.presenter.backBufferRtv(), s.presenter.width(), s.presenter.height(), s.plan.dst, true, s.presented * 2 + 1, false);
+            s.pipeline.present(s.presenter.backBufferRtv(), s.presenter.width(), s.presenter.height(), s.plan.dst, true, s.presented * 2 + 1, false, s.cfg.osd.enabled ? &s.osd : nullptr);
             if (SUCCEEDED(s.presenter.present(0))) {
                 ++s.concealed;
                 s.outRate.tick(qpcSeconds());

@@ -45,6 +45,14 @@ struct PipelineFrameParams {
     float nightLight = 0.0f;
 };
 
+// In-game OSD drawn by the present pass (text already packed, see telemetry/OsdText.h)
+struct OsdOverlay {
+    int cols = 0, rows = 0;
+    uint32_t words[BGN_OSD_MAX_CHARS / 4] = {};
+    int position = 1; // OsdPosition
+    int scale = 2;
+};
+
 struct PipelineStatus {
     int inW = 0, inH = 0, outW = 0, outH = 0;
     UpscalerKind upscalerUsed = UpscalerKind::None;
@@ -74,7 +82,8 @@ public:
     bool canExtrapolate() const { return flow_.valid() && final_[curFinal_].valid(); }
 
     // Draws the current output (or interpolated frame) into a render target.
-    void present(ID3D11RenderTargetView* rtv, int bbW, int bbH, const RECT& dst, bool interpolated, uint64_t presentIndex, bool ditherHdr);
+    void present(ID3D11RenderTargetView* rtv, int bbW, int bbH, const RECT& dst, bool interpolated, uint64_t presentIndex, bool ditherHdr,
+                 const OsdOverlay* osd = nullptr);
 
     void resetHistory();
     void pollReadbacks();

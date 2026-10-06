@@ -381,9 +381,22 @@ bool Pipeline::extrapolate(float e, GpuTimer* timer) {
     return true;
 }
 
-void Pipeline::present(ID3D11RenderTargetView* rtv, int bbW, int bbH, const RECT& dst, bool interpolated, uint64_t presentIndex, bool ditherHdr) {
+void Pipeline::present(ID3D11RenderTargetView* rtv, int bbW, int bbH, const RECT& dst, bool interpolated, uint64_t presentIndex, bool ditherHdr,
+                       const OsdOverlay* osd) {
     auto* ctx = g_.ctx;
     gpu::FrameCB cb = cb_;
+    cb.gOsd = f4(0, 0, 1, 0);
+    if (osd && osd->cols > 0 && osd->rows > 0) {
+        const float sc = float(std::clamp(osd->scale, 1, 4));
+        const float boxW = (osd->cols * 8.0f + 10.0f) * sc, boxH = (osd->rows * 12.0f + 8.0f) * sc, m = 12.0f;
+        const bool right = osd->position == 1 || osd->position == 3, bottom = osd->position >= 2;
+        const float x = right ? float(dst.right) - boxW - m : float(dst.left) + m;
+        const float y = bottom ? float(dst.bottom) - boxH - m : float(dst.top) + m;
+        cb.gOsd = f4(std::floor(x), std::floor(y), sc, 1.0f);
+        cb.gOsd2 = f4(float(osd->cols), float(osd->rows), 0.62f, 0);
+        for (int i = 0; i < BGN_OSD_TEXT_VECTORS; ++i)
+            cb.gOsdText[i] = u4(osd->words[i * 4], osd->words[i * 4 + 1], osd->words[i * 4 + 2], osd->words[i * 4 + 3]);
+    }
     cb.gFrame.x = uint32_t(presentIndex);
     cb.gPresent = f4(float(dst.left), float(dst.top), float(dst.right - dst.left), float(dst.bottom - dst.top));
     const bool hdrOut = cb.gFrame.z == BGN_OUTPUT_SCRGB;

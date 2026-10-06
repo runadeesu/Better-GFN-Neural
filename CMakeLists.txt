@@ -41,6 +41,7 @@ add_library(bgn_portable STATIC
     src/filters/ContentResolution.cpp
     src/telemetry/StreamQuality.cpp
     src/telemetry/SessionHistory.cpp
+    src/telemetry/OsdText.cpp
     src/media/ImageOps.cpp
     src/core/StbImpl.cpp
     src/neural/NsrReference.cpp
@@ -119,7 +120,7 @@ if(WIN32)
     endif()
 
     target_link_libraries(bgn_win PUBLIC bgn_portable imgui
-        d3d11 dxgi dxguid dcomp dwmapi shcore pdh dbghelp avrt windowsapp user32 gdi32 shell32 ole32 advapi32)
+        d3d11 dxgi dxguid dcomp dwmapi shcore pdh dbghelp avrt windowsapp user32 gdi32 shell32 ole32 advapi32 comdlg32)
 
     add_executable(BetterGFNNeural WIN32 src/app/main.cpp resources/app.rc resources/app.manifest)
     target_link_libraries(BetterGFNNeural PRIVATE bgn_win)

@@ -109,6 +109,16 @@ void drawSettingsPage(PageContext& c) {
     if (secondaryButton(tr("Open folder")) && c.actions.openScreenshots) c.actions.openScreenshots();
     endCard();
 
+    beginCard("backup", ImVec2(half, 0));
+    sectionTitle(tr("Backup & support"), tr("Save or restore all settings, game profiles and presets. The diagnostics report collects system, GPU, display and recent log information for troubleshooting (no account data; the user name is redacted)."));
+    if (secondaryButton(tr("Export settings")) && c.actions.exportSettings) c.actions.exportSettings();
+    ImGui::SameLine();
+    if (secondaryButton(tr("Import settings")) && c.actions.importSettings) c.actions.importSettings();
+    ImGui::SameLine();
+    if (secondaryButton(tr("Create diagnostics report")) && c.actions.createDiagnostics) c.actions.createDiagnostics();
+    if (!m.lastExport.empty()) textWrappedDim(trf("Saved: {}", m.lastExport).c_str());
+    endCard();
+
     beginCard("logs", ImVec2(half, 0));
     sectionTitle(tr("Logs"), tr("Logs never contain account data; the Windows user name and profile path are redacted."));
     {

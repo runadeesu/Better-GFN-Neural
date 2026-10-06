@@ -46,6 +46,11 @@ private:
     void sampleHistory(double dt);
     void finishHistorySession();
     void saveHistory();
+    std::filesystem::path documentsFolder() const;
+    void exportSettings();
+    void importSettings();
+    void createDiagnostics();
+    static std::string timeStamp();
 
     CommandLine cmd_;
     AppPaths paths_;
