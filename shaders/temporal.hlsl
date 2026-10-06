@@ -62,18 +62,27 @@ void main(uint3 id : SV_DispatchThreadID) {
     float3 h = isStatic ? gHistory.Load(int3(p, 0)).rgb : gHistory.SampleLevel(gLinearClamp, prevPos * gIn.zw, 0).rgb;
     float3 hy = rgbToYCoCg(h);
 
-    // Static content tolerates a wider box => strong anti-flicker on thin details
+    float strength = gTemporal.x;
+    // Clipping box. Inside a compression block the 3x3 spread is ~0, which would
+    // reject exactly the frame-to-frame block flicker we want to remove. A noise
+    // floor keeps small temporal fluctuations (flicker, codec noise) inside the box
+    // for static, well-tracked pixels; real changes are larger and still clipped.
     float gamma = gTemporal.y * (isStatic ? 1.0 + 0.5 * gTemporal.z : 1.0);
-    float3 lo = max(bmin, m1 - gamma * sd), hi = min(bmax, m1 + gamma * sd);
+    float floorY = isStatic ? lerp(0.004, 0.028, strength) * conf : 0.003;
+    float3 halfExt = max(gamma * sd, float3(floorY, floorY * 0.5, floorY * 0.5));
+    float3 lo = m1 - halfExt, hi = m1 + halfExt;
+    if (!isStatic) {
+        lo = max(lo, bmin);
+        hi = min(hi, bmax);
+    }
     lo = min(lo, cy);
     hi = max(hi, cy);
     float3 clipped = clipAabb(hy, lo, hi);
 
-    float strength = gTemporal.x;
     float alpha = strength * (isStatic ? 0.9 : 0.78);
     alpha *= lerp(0.35, 1.0, conf);                       // unreliable motion => trust current frame
     alpha *= 1.0 - 0.6 * smoothstep(10.0, 60.0, motion);  // very fast motion => less history
-    float ghost = saturate(length(hy - clipped) / (length(sd) + 0.02));
+    float ghost = saturate(length(hy - clipped) / (length(halfExt) + 0.01));
     alpha *= 1.0 - 0.65 * ghost;                          // history disagreed => ghosting risk
     if (!inside) alpha = 0.0;
 

@@ -93,6 +93,8 @@ void drawHomePage(PageContext& c) {
                 ImGui::AlignTextToFramePadding();
                 textColored(col::Warn, m.launchError.c_str(), kFontSmall);
             }
+        } else if (m.awaitingManualStart && s.enhancementEnabled) {
+            if (primaryButton(tr("Start enhancement")) && c.actions.startEnhancement) c.actions.startEnhancement();
         } else {
             if (secondaryButton(s.enhancementEnabled ? tr("Pause enhancement") : tr("Resume enhancement"))) {
                 s.enhancementEnabled = !s.enhancementEnabled;

@@ -339,6 +339,31 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
         bool pass = on < off * 0.7;
         allOk &= pass;
         report["temporal_stability"] = {{"frame_delta_without", off}, {"frame_delta_with", on}, {"reduction", off > 0 ? 1.0 - on / off : 0.0}, {"pass", pass}};
+
+        // Ghosting: on a fast pan the temporally reconstructed frame must stay close
+        // to the current frame (a lagging/ghosting result drifts towards the previous one).
+        BGN_LOG_INFO("SelfTest", "temporal ghosting");
+        auto panned = [&](bool temporal, std::vector<float>& last, std::vector<float>& beforeLast) {
+            EnhancementSettings e = plainSettings();
+            e.temporal = {temporal, false, 0.8f};
+            PipelineFrameParams params;
+            params.cfg = resolveConfig(e, 4, false);
+            pipeline.resetHistory();
+            int ww, hh;
+            for (int f = 0; f < 10; ++f) {
+                processSynthetic(c, pipeline, scene, params, w, h, 1.0f + f / 60.0f, 600.0f); // 10 px per frame
+                if (f == 8) readbackTexture(c.device.device(), c.device.context(), pipeline.finalTexture(), beforeLast, ww, hh);
+            }
+            readbackTexture(c.device.device(), c.device.context(), pipeline.finalTexture(), last, ww, hh);
+        };
+        std::vector<float> onLast, onPrev, offLast, offPrev;
+        panned(true, onLast, onPrev);
+        panned(false, offLast, offPrev);
+        double deviation = mae(onLast, offLast);    // temporal vs. untouched current frame
+        double motionDelta = mae(offLast, offPrev); // how different consecutive frames are
+        bool ghostPass = deviation < motionDelta * 0.25;
+        allOk &= ghostPass;
+        report["temporal_ghosting"] = {{"deviation_from_current", deviation}, {"consecutive_frame_delta", motionDelta}, {"pass", ghostPass}};
     }
 
     report["pass"] = allOk;

@@ -154,6 +154,10 @@ void Application::setupActions() {
         markDirty();
     };
     actions_.runBenchmark = [this] { startBenchmark(); };
+    actions_.startEnhancement = [this] {
+        manualStart_ = true;
+        updateEngine();
+    };
     actions_.cancelBenchmark = [this] { benchCancel_ = true; };
     actions_.applyBenchmark = [this] {
         const BenchmarkResult& r = settings_.benchmark;
@@ -351,6 +355,7 @@ void Application::pollDetection() {
     lastState_ = st.state;
     lastStream_ = st.streamWindow;
     model_.currentGame = currentGame_.empty() && st.state == GfnState::Streaming ? std::string("GeForce NOW") : currentGame_;
+    model_.awaitingManualStart = st.state == GfnState::Streaming && !settings_.autoStart && !manualStart_;
     model_.profileKey = currentProfile_;
 
     EngineTarget t;

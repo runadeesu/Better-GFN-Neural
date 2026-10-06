@@ -35,6 +35,7 @@ const std::unordered_map<std::string_view, const char*>& japanese() {
         {"Ready - switch to GeForce NOW to see the enhanced picture", "準備完了 - GeForce NOW に切り替えると強化映像が表示されます"},
         {"Pause enhancement", "画質強化を一時停止"},
         {"Resume enhancement", "画質強化を再開"},
+        {"Start enhancement", "画質強化を開始"},
         {"GFN STATUS", "GFN ステータス"},
         {"CURRENT GAME", "現在のゲーム"},
         {"ENHANCEMENT STATUS", "画質強化"},

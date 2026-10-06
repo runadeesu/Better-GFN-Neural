@@ -32,7 +32,7 @@ $app = Start-Process -FilePath $Exe -ArgumentList @("--automation", "detect", "-
 Start-Sleep -Seconds 5
 # launcher -> game (Cyberpunk, (R) via escape) -> resize -> fullscreen -> windowed -> other game -> exit
 $script1 = "6:title=Cyberpunk 2077® on GeForce NOW;12:resize=1600x900;16:fullscreen;21:windowed;24:minimize;26:restore;28:title=Fortnite® on GeForce NOW;34:exit"
-$gfn1 = Start-Process -FilePath $gfnExe -ArgumentList @("--title", "`"GeForce NOW`"", "--size", "1280x720", "--script", "`"$script1`"") -PassThru
+$gfn1 = Start-Process -FilePath $gfnExe -ArgumentList @("--title", "`"GeForce NOW`"", "--size", "960x540", "--script", "`"$script1`"") -PassThru
 $gfn1.WaitForExit(60000) | Out-Null
 Start-Sleep -Seconds 6
 # GFN restarts directly into a game

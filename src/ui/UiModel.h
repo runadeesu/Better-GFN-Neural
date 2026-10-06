@@ -40,6 +40,7 @@ struct UiModel {
     std::string dataDir;
     std::string gfnExecutable;
     std::string launchError;
+    bool awaitingManualStart = false; // auto start disabled: a game is ready to be enhanced
 };
 
 struct UiActions {
@@ -57,6 +58,7 @@ struct UiActions {
     std::function<void(const std::string&)> deleteProfile;
     std::function<void()> languageChanged;
     std::function<void()> firstRunCompleted;
+    std::function<void()> startEnhancement;          // manual start when auto start is disabled
 };
 
 } // namespace bgn

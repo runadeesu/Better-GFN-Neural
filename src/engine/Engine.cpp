@@ -124,6 +124,7 @@ struct Engine::Session {
     int captureFailures = 0;
     bool usingDuplication = false;
     bool wantHdrCapture = false;
+    bool cursorCaptured = false;
 
     EngineConfig cfg;
     uint64_t cfgRevision = ~0ull;
@@ -232,6 +233,7 @@ static void endSession(Engine::Session& s) {
     if (s.deviceReady) s.pipeline.resetHistory();
     s.sessionReady = false;
     s.wasVisible = false;
+    s.cursorCaptured = false;
 }
 
 static void destroyDevice(Engine::Session& s) {
@@ -364,7 +366,9 @@ void Engine::loopOnce(Session& s) {
 
     // ---- Capture session -----------------------------------------------------
     const bool wantHdr = s.mon.hdrEnabled;
-    if (s.sessionReady && (!(target == s.target) || s.capture->failed() || wantHdr != s.wantHdrCapture)) {
+    const bool sameWindow = target.hwnd == s.target.hwnd && target.pid == s.target.pid;
+    if (sameWindow) s.target.gameName = target.gameName; // a title change alone must not restart capture
+    if (s.sessionReady && (!sameWindow || s.capture->failed() || wantHdr != s.wantHdrCapture)) {
         if (s.capture && s.capture->failed()) {
             BGN_LOG_WARN("Engine", "capture ended: {}", s.capture->error().empty() ? "window closed" : s.capture->error());
             ++s.captureFailures;
@@ -497,10 +501,14 @@ void Engine::loopOnce(Session& s) {
                 if (scaledOutput) {
                     s.cursor.activate(client);
                     s.cursor.tick();
-                    s.capture->setCursorCapture(true);
-                } else if (s.cursor.active()) {
+                    if (!s.cursorCaptured) {
+                        s.capture->setCursorCapture(true);
+                        s.cursorCaptured = true;
+                    }
+                } else if (s.cursor.active() || s.cursorCaptured) {
                     s.cursor.deactivate();
                     s.capture->setCursorCapture(false);
+                    s.cursorCaptured = false;
                 }
 
                 const PacingPlan pacing = computePacing(s.inRate.rate(tNow), s.mon.refreshHz, s.automode.frameGen());
