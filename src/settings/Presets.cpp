@@ -113,6 +113,44 @@ EffectiveConfig resolveConfig(const EnhancementSettings& e, int tier, bool autoM
     c.color.shadowDetail = e.color.shadowDetail;
     c.color.localContrast = tier >= 3 ? e.color.localContrast : 0.0f;
     c.color.toneMapping = e.color.toneMapping != TriState::Off;
+    // --- Visual style (offsets on top of the user's color settings) ----------
+    auto& k = c.color;
+    switch (e.style) {
+    case VisualStyle::Natural: break;
+    case VisualStyle::Vivid:
+        k.saturation += 0.30f;
+        k.vibrance += 0.20f;
+        k.contrast += 0.15f;
+        if (tier >= 3) k.localContrast += 0.10f;
+        break;
+    case VisualStyle::Cinematic:
+        k.contrast += 0.12f;
+        k.saturation -= 0.08f;
+        k.temperature += 0.12f;
+        k.highlightRecovery += 0.20f;
+        c.splitTone = 0.7f;
+        break;
+    case VisualStyle::Competitive:
+        k.shadowDetail += 0.45f;
+        k.saturation += 0.15f;
+        if (tier >= 3) k.localContrast += 0.15f;
+        c.sharpen = std::min(1.0f, c.sharpen * 1.2f);
+        break;
+    case VisualStyle::Monochrome:
+        k.contrast += 0.10f;
+        c.monochrome = 1.0f;
+        break;
+    }
+    if (e.style != VisualStyle::Natural) k.enabled = true; // a style needs the color stage
+    k.saturation = std::clamp(k.saturation, -1.0f, 1.0f);
+    k.vibrance = std::clamp(k.vibrance, 0.0f, 1.0f);
+    k.contrast = std::clamp(k.contrast, -1.0f, 1.0f);
+    k.temperature = std::clamp(k.temperature, -1.0f, 1.0f);
+    k.highlightRecovery = std::clamp(k.highlightRecovery, 0.0f, 1.0f);
+    k.shadowDetail = std::clamp(k.shadowDetail, 0.0f, 1.0f);
+    k.localContrast = std::clamp(k.localContrast, 0.0f, 1.0f);
+    c.adaptiveCleanup = e.adaptiveCleanup;
+
     c.hdrMode = e.hdr.mode;
     c.hdrIntensity = e.hdr.intensity;
     c.peakNitsOverride = e.hdr.peakNitsOverride;
@@ -125,6 +163,24 @@ EffectiveConfig resolveConfig(const EnhancementSettings& e, int tier, bool autoM
     if (e.frameGen != FrameGenMode::Off) flow = std::max(flow, tier >= 5 ? 2 : 1);
     c.flowQuality = flow;
     return c;
+}
+
+void applyAdaptiveCleanup(EffectiveConfig& c, const EnhancementSettings& e, double blockiness) {
+    if (!c.adaptiveCleanup || !(blockiness >= 0.0)) return;
+    // blockiness ~0.15 is a clean stream, ~0.6+ heavy macroblocking (see quality.hlsl)
+    const float t = float(std::clamp((blockiness - 0.2) / 0.45, 0.0, 1.0));
+    auto boost = [&](float& v, const Feature& f, float maxValue) {
+        if (v > 0.0f && f.enabled && f.automatic) v = std::min(maxValue, v * (1.0f + 0.6f * t));
+    };
+    boost(c.deblock, e.deblock, 0.9f);
+    boost(c.denoise, e.denoise, 0.8f);
+    boost(c.deband, e.deband, 0.85f);
+    if (t > 0.5f && c.tier >= 4) c.cleanupHQ = true;
+}
+
+int batteryTierCap(bool onBattery, bool batterySaver, int batteryMaxTier) {
+    if (!onBattery || !batterySaver) return kMaxTier;
+    return std::clamp(batteryMaxTier, 0, kMaxTier);
 }
 
 namespace {

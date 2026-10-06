@@ -40,6 +40,9 @@ struct EngineConfig {
     CaptureBackend captureBackend = CaptureBackend::Auto;
     std::string preferredMonitor;
     bool compareSplit = false;
+    AccessibilitySettings accessibility;
+    OsdSettings osd;
+    PowerSettings power;
     int initialTier = -1; // -1 = derive from GPU / benchmark
     bool forceWarp = false;
     bool safeMode = false;

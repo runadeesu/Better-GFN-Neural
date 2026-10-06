@@ -48,6 +48,25 @@ void drawDisplayPage(PageContext& c) {
     endCard();
     ImGui::Dummy(ImVec2(0, 2 * sc));
 
+    beginCard("access", ImVec2(W, 0));
+    sectionTitle(tr("Accessibility"),
+                 tr("Color vision support shifts colors that are hard to tell apart into colors you can distinguish (daltonization). Night light reduces blue light. Both change only the enhanced picture."));
+    label(tr("Color vision support"));
+    {
+        const char* items[] = {tr("Off"), tr("Protanopia (red)"), tr("Deuteranopia (green)"), tr("Tritanopia (blue)")};
+        int v = int(s.accessibility.colorVision);
+        if (segmented("cvd", &v, items, 4)) {
+            s.accessibility.colorVision = ColorVision(v);
+            c.actions.settingsChanged();
+        }
+    }
+    ImGui::BeginDisabled(s.accessibility.colorVision == ColorVision::Off);
+    if (sliderRow(tr("Correction strength"), &s.accessibility.colorVisionStrength, 0.0f, 1.0f, "%.2f")) c.actions.settingsChanged();
+    ImGui::EndDisabled();
+    if (sliderRow(tr("Night light (blue light reduction)"), &s.accessibility.nightLight, 0.0f, 1.0f, "%.2f")) c.actions.settingsChanged();
+    endCard();
+    ImGui::Dummy(ImVec2(0, 2 * sc));
+
     beginCard("monitors", ImVec2(W, 0));
     sectionTitle(tr("Monitors"));
     label(tr("Preferred monitor"));

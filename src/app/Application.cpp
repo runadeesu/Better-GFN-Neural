@@ -308,6 +308,9 @@ void Application::updateEngine() {
     c.captureBackend = settings_.captureBackend;
     c.preferredMonitor = settings_.preferredMonitor;
     c.compareSplit = settings_.compareSplit;
+    c.accessibility = settings_.accessibility;
+    c.osd = settings_.osd;
+    c.power = settings_.power;
     c.forceWarp = cmd_.forceWarp;
     c.safeMode = safeMode_;
     const BenchmarkResult& b = settings_.benchmark;

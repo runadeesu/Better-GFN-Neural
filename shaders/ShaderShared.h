@@ -26,6 +26,10 @@ struct uint4 { uint32_t x = 0, y = 0, z = 0, w = 0; };
 #define BGN_FLAG_COLOR_AUTO        (1u << 9)
 #define BGN_FLAG_PREV_FINAL_VALID  (1u << 10)
 
+// OSD text capacity: 16 chars per uint4
+#define BGN_OSD_TEXT_VECTORS 12
+#define BGN_OSD_MAX_CHARS (BGN_OSD_TEXT_VECTORS * 16)
+
 // Values of FrameCB::gFrame.y (input encoding of the captured surface)
 #define BGN_INPUT_SDR    0u   // 8-bit sRGB (BGRA8)
 #define BGN_INPUT_SCRGB  1u   // FP16 scRGB linear (HDR window capture)
@@ -52,6 +56,11 @@ BGN_CBUFFER(FrameCB, b0) {
     float4 gInterp;   // t, static threshold, occlusion threshold, reserved
     float4 gPresent;  // destination rect in back buffer: x, y, w, h
     float4 gPresent2; // back buffer w, h, dither amplitude, compare split position (0..1)
+    float4 gStyle;    // monochrome 0..1, split toning 0..1, night light 0..1, color vision mode (0 off, 1 protan, 2 deutan, 3 tritan)
+    float4 gStyle2;   // color vision correction strength 0..1, reserved x3
+    float4 gOsd;      // OSD origin x, y (back buffer px), pixel scale, enabled (0/1)
+    float4 gOsd2;     // OSD columns, rows, background opacity, reserved
+    uint4  gOsdText[BGN_OSD_TEXT_VECTORS]; // ASCII, 4 chars per uint (little endian), '\n' = new line
 };
 
 // Per-dispatch parameters

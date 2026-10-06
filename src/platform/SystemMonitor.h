@@ -16,6 +16,8 @@ struct SystemSample {
     double gpuUsage = -1;        // 0..1 (3D engine), -1 unknown
     double gpuDedicatedMB = -1;  // all processes, -1 unknown
     double gpuDedicatedTotalMB = 0;
+    bool onBattery = false;      // laptop running on battery power
+    int batteryPercent = -1;     // 0..100, -1 unknown / no battery
 };
 
 class SystemMonitor {

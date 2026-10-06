@@ -476,6 +476,9 @@ void Engine::loopOnce(Session& s) {
                                                                           : (s.mon.maxLuminance > 100 ? s.mon.maxLuminance : 1000.0f);
             params.compareSplit = s.cfg.compareSplit;
             params.splitPosition = 0.5f;
+            params.colorVision = int(s.cfg.accessibility.colorVision);
+            params.colorVisionStrength = s.cfg.accessibility.colorVisionStrength;
+            params.nightLight = s.cfg.accessibility.nightLight;
             if (!s.wasVisible) s.pipeline.resetHistory();
 
             CaptureInput ci;

@@ -37,6 +37,8 @@ bool drawEnhancementEditor(EnhancementSettings& e, const char* scope) {
     changed |= featureRow(tr("Blocking / macroblock cleanup"), e.deblock, tr("Smooths compression block edges in flat regions while keeping real edges."));
     changed |= featureRow(tr("Banding reduction"), e.deband, tr("Rebuilds smooth gradients (sky, fog, dark scenes) and dithers the output."));
     changed |= featureRow(tr("Compression & mosquito noise reduction"), e.denoise, tr("Edge-aware denoise, stronger around edges where ringing appears and in dark scenes."));
+    changed |= toggleRow(tr("Adapt to stream quality"), &e.adaptiveCleanup,
+                         tr("Raises the automatic cleanup strength when the stream quality monitor measures heavy compression (low bitrate, busy scenes)."));
     endCard();
 
     beginCard("temporal", ImVec2(colW, 0));
@@ -75,6 +77,20 @@ bool drawEnhancementEditor(EnhancementSettings& e, const char* scope) {
     }
     endCard();
     ImGui::EndGroup();
+
+    // ---- Visual style (full width) -------------------------------------------
+    beginCard("style", ImVec2(W, 0));
+    sectionTitle(tr("Visual style"),
+                 tr("A look applied on top of the color settings. Vivid: punchy colors. Cinematic: film-like contrast with warm highlights and teal shadows. Competitive: brighter shadows and clearer detail to spot opponents. Monochrome: black and white."));
+    {
+        const char* items[] = {tr("Natural"), tr("Vivid"), tr("Cinematic"), tr("Competitive"), tr("Monochrome")};
+        int v = int(e.style);
+        if (segmented("vstyle", &v, items, 5)) {
+            e.style = VisualStyle(v);
+            changed = true;
+        }
+    }
+    endCard();
 
     // ---- Color (full width) -------------------------------------------------
     beginCard("color", ImVec2(W, 0));

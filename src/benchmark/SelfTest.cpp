@@ -366,6 +366,75 @@ bool runSelfTest(const SelfTestOptions& opt, std::string& out) {
         report["temporal_ghosting"] = {{"deviation_from_current", deviation}, {"consecutive_frame_delta", motionDelta}, {"pass", ghostPass}};
     }
 
+    // ---- Visual styles and accessibility filters ---------------------------
+    BGN_LOG_INFO("SelfTest", "visual styles and accessibility");
+    {
+        const int w = 320, h = 180;
+        GpuTexture scene;
+        scene.create(c.device.device(), w, h, DXGI_FORMAT_R8G8B8A8_UNORM, true);
+        pipeline.configure(PipelineGeometry{w, h, 0, 0, w, h});
+        auto render = [&](VisualStyle style, int cvd, float night, std::vector<float>& px) {
+            EnhancementSettings e = plainSettings();
+            e.style = style;
+            e.colorEnabled = true;
+            PipelineFrameParams params;
+            params.cfg = resolveConfig(e, 4, false);
+            params.colorVision = cvd;
+            params.colorVisionStrength = 1.0f;
+            params.nightLight = night;
+            pipeline.resetHistory();
+            processSynthetic(c, pipeline, scene, params, w, h, 1.0f, 0.0f);
+            int ww = 0, hh = 0;
+            return readbackTexture(c.device.device(), c.device.context(), pipeline.finalTexture(), px, ww, hh) && ww == w && hh == h;
+        };
+        auto sane = [](const std::vector<float>& px) {
+            for (float v : px)
+                if (!std::isfinite(v) || v < -0.01f || v > 1.01f) return false;
+            return !px.empty();
+        };
+        auto channelMean = [](const std::vector<float>& px, int ch) {
+            double s = 0;
+            for (size_t i = ch; i < px.size(); i += 4) s += px[i];
+            return px.empty() ? 0.0 : s / double(px.size() / 4);
+        };
+        std::vector<float> natural, px;
+        bool ok = render(VisualStyle::Natural, 0, 0.0f, natural) && sane(natural);
+        nlohmann::json styles = nlohmann::json::object();
+        for (VisualStyle v : {VisualStyle::Vivid, VisualStyle::Cinematic, VisualStyle::Competitive, VisualStyle::Monochrome}) {
+            bool r = render(v, 0, 0.0f, px) && sane(px);
+            double diff = mae(px, natural);
+            bool pass = r && diff > 0.002;
+            if (v == VisualStyle::Monochrome) {
+                double maxChroma = 0;
+                for (size_t i = 0; i + 2 < px.size(); i += 4)
+                    maxChroma = std::max(maxChroma, double(std::max({px[i], px[i + 1], px[i + 2]}) - std::min({px[i], px[i + 1], px[i + 2]})));
+                pass &= maxChroma < 0.02;
+                styles[toString(v)] = {{"diff_vs_natural", diff}, {"max_chroma", maxChroma}, {"pass", pass}};
+            } else {
+                styles[toString(v)] = {{"diff_vs_natural", diff}, {"pass", pass}};
+            }
+            ok &= pass;
+        }
+        nlohmann::json cvd = nlohmann::json::object();
+        for (int m = 1; m <= 3; ++m) {
+            bool r = render(VisualStyle::Natural, m, 0.0f, px) && sane(px);
+            double diff = mae(px, natural);
+            bool pass = r && diff > 0.001;
+            cvd[toString(ColorVision(m))] = {{"diff_vs_off", diff}, {"pass", pass}};
+            ok &= pass;
+        }
+        bool nr = render(VisualStyle::Natural, 0, 1.0f, px) && sane(px);
+        double blueRatio = channelMean(px, 2) / std::max(1e-6, channelMean(natural, 2));
+        double redRatio = channelMean(px, 0) / std::max(1e-6, channelMean(natural, 0));
+        bool nightPass = nr && blueRatio < 0.8 && redRatio > 0.9;
+        ok &= nightPass;
+        allOk &= ok;
+        report["visual_styles"] = {{"styles", styles},
+                                   {"color_vision", cvd},
+                                   {"night_light", {{"blue_ratio", blueRatio}, {"red_ratio", redRatio}, {"pass", nightPass}}},
+                                   {"pass", ok}};
+    }
+
     report["pass"] = allOk;
     BGN_LOG_INFO("SelfTest", "self-test {}", allOk ? "PASSED" : "FAILED");
     out = report.dump(2);

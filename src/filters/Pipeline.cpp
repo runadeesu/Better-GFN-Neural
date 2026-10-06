@@ -138,6 +138,8 @@ void Pipeline::updateFrameCB(const PipelineFrameParams& p, uint32_t flags) {
     cb.gFlow = f4(float(std::max(flow_.gridW(), 1)), float(std::max(flow_.gridH(), 1)), flow_.cellSize(), 0);
     cb.gInterp = f4(0.5f, 0.035f, 0.25f, 0);
     cb.gPresent2.w = p.splitPosition;
+    cb.gStyle = f4(c.monochrome, c.splitTone, p.nightLight, float(p.colorVision));
+    cb.gStyle2 = f4(p.colorVision > 0 ? p.colorVisionStrength : 0.0f, 0, 0, 0);
     frameCB_.update(g_.ctx, cb);
 }
 

@@ -55,6 +55,9 @@ struct EffectiveConfig {
     bool skinProtect = false;
 
     ColorParams color;
+    float monochrome = 0;   // visual style: 0..1 desaturation
+    float splitTone = 0;    // visual style: cinematic split toning 0..1
+    bool adaptiveCleanup = false; // cleanup follows the measured stream compression level
     TriState hdrMode = TriState::Auto;
     float hdrIntensity = 0.5f;
     float peakNitsOverride = 0, paperWhiteOverride = 0;
@@ -68,6 +71,13 @@ struct EffectiveConfig {
 // Resolves enhancement settings + tier into an EffectiveConfig.
 // |autoMode| true: user choices are upper bounds that the tier can lower.
 EffectiveConfig resolveConfig(const EnhancementSettings& e, int tier, bool autoMode);
+
+// Stream quality driven cleanup: scales the automatic cleanup strengths by the
+// measured compression level (blockiness 0..1). Only touches features in Auto.
+void applyAdaptiveCleanup(EffectiveConfig& c, const EnhancementSettings& e, double blockiness);
+
+// Battery saver: caps the tier and disables frame interpolation on battery.
+int batteryTierCap(bool onBattery, bool batterySaver, int batteryMaxTier);
 
 // Rough initial tier guess from the GPU name/vendor before measurements exist.
 int estimateTierForGpu(unsigned vendorId, const std::string& gpuName, double dedicatedVramGB);

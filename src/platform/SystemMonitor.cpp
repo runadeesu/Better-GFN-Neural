@@ -71,6 +71,11 @@ void SystemMonitor::sample() {
         prevKernel_ = k;
         prevUser_ = u;
     }
+    SYSTEM_POWER_STATUS ps{};
+    if (GetSystemPowerStatus(&ps)) {
+        s.onBattery = ps.ACLineStatus == 0;
+        s.batteryPercent = ps.BatteryLifePercent <= 100 ? int(ps.BatteryLifePercent) : -1;
+    }
     if (!pdhTried_) pdhOk_ = initPdh();
     LUID luid{};
     bool luidSet;

@@ -654,6 +654,110 @@ TEST_CASE("settings_language_values") {
     CHECK_EQ(s.language, std::string("auto"));
 }
 
+TEST_CASE("v11_settings_roundtrip") {
+    Settings s;
+    s.enhancement.style = VisualStyle::Cinematic;
+    s.enhancement.adaptiveCleanup = false;
+    s.accessibility.colorVision = ColorVision::Deuteranopia;
+    s.accessibility.colorVisionStrength = 0.6f;
+    s.accessibility.nightLight = 0.3f;
+    s.osd.enabled = true;
+    s.osd.position = OsdPosition::BottomLeft;
+    s.osd.scale = 3;
+    s.power.batterySaver = false;
+    s.power.batteryMaxTier = 1;
+    s.screenshotFolder = "D:\\Shots";
+    s.screenshotComparison = false;
+    s.recordHistory = false;
+    EnhancementSettings mine;
+    mine.style = VisualStyle::Competitive;
+    mine.sharpen.strength = 0.9f;
+    s.userPresets["My FPS look"] = mine;
+    Settings r;
+    CHECK(settingsFromJson(settingsToJson(s), r, nullptr));
+    CHECK(r.enhancement.style == VisualStyle::Cinematic);
+    CHECK(!r.enhancement.adaptiveCleanup);
+    CHECK(r.accessibility == s.accessibility);
+    CHECK(r.osd == s.osd);
+    CHECK(r.power == s.power);
+    CHECK_EQ(r.screenshotFolder, s.screenshotFolder);
+    CHECK(!r.screenshotComparison);
+    CHECK(!r.recordHistory);
+    CHECK_EQ(r.userPresets.size(), size_t(1));
+    CHECK(r.userPresets["My FPS look"] == mine);
+    // Out-of-range values are clamped
+    Settings bad;
+    bad.osd.scale = 99;
+    bad.power.batteryMaxTier = -3;
+    bad.accessibility.nightLight = 7.0f;
+    bad.sanitize();
+    CHECK_EQ(bad.osd.scale, 4);
+    CHECK_EQ(bad.power.batteryMaxTier, 0);
+    CHECK_NEAR(bad.accessibility.nightLight, 1.0, 1e-6);
+    // Single preset export / import
+    EnhancementSettings back;
+    CHECK(enhancementFromJson(enhancementToJson(mine), back));
+    CHECK(back == mine);
+    CHECK(!enhancementFromJson("not json", back));
+}
+
+TEST_CASE("visual_styles_resolve") {
+    EnhancementSettings e;
+    EffectiveConfig natural = resolveConfig(e, 4, true);
+    CHECK_NEAR(natural.monochrome, 0.0, 1e-6);
+    e.style = VisualStyle::Vivid;
+    EffectiveConfig vivid = resolveConfig(e, 4, true);
+    CHECK(vivid.color.saturation > natural.color.saturation);
+    CHECK(vivid.color.contrast > natural.color.contrast);
+    e.style = VisualStyle::Competitive;
+    EffectiveConfig comp = resolveConfig(e, 4, true);
+    CHECK(comp.color.shadowDetail > natural.color.shadowDetail);
+    e.style = VisualStyle::Cinematic;
+    CHECK(resolveConfig(e, 4, true).splitTone > 0.0f);
+    e.style = VisualStyle::Monochrome;
+    e.colorEnabled = false;
+    EffectiveConfig mono = resolveConfig(e, 4, true);
+    CHECK_NEAR(mono.monochrome, 1.0, 1e-6);
+    CHECK(mono.color.enabled); // a style turns the color stage on
+    // values stay in range even with extreme user settings
+    e.style = VisualStyle::Vivid;
+    e.color.saturation = 1.0f;
+    e.color.contrast = 1.0f;
+    EffectiveConfig x = resolveConfig(e, 6, true);
+    CHECK(x.color.saturation <= 1.0f);
+    CHECK(x.color.contrast <= 1.0f);
+}
+
+TEST_CASE("adaptive_cleanup_and_battery") {
+    EnhancementSettings e;
+    EffectiveConfig base = resolveConfig(e, 4, true);
+    EffectiveConfig clean = base;
+    applyAdaptiveCleanup(clean, e, 0.1); // clean stream: unchanged
+    CHECK_NEAR(clean.deblock, base.deblock, 1e-6);
+    EffectiveConfig heavy = base;
+    applyAdaptiveCleanup(heavy, e, 0.8);
+    CHECK(heavy.deblock > base.deblock);
+    CHECK(heavy.denoise > base.denoise);
+    CHECK(heavy.deblock <= 0.9f);
+    // manual strength is respected
+    e.deblock.automatic = false;
+    EffectiveConfig manual = resolveConfig(e, 4, true);
+    float manualDeblock = manual.deblock;
+    applyAdaptiveCleanup(manual, e, 0.8);
+    CHECK_NEAR(manual.deblock, manualDeblock, 1e-6);
+    // disabled
+    e.adaptiveCleanup = false;
+    EffectiveConfig off = resolveConfig(e, 4, true);
+    float d = off.denoise;
+    applyAdaptiveCleanup(off, e, 0.8);
+    CHECK_NEAR(off.denoise, d, 1e-6);
+
+    CHECK_EQ(batteryTierCap(false, true, 2), kMaxTier);
+    CHECK_EQ(batteryTierCap(true, true, 2), 2);
+    CHECK_EQ(batteryTierCap(true, false, 2), kMaxTier);
+    CHECK_EQ(batteryTierCap(true, true, 42), kMaxTier);
+}
+
 TEST_CASE("command_line") {
     auto c = parseCommandLine({"--background", "--data-dir", "D:\\x", "--seconds", "12.5", "--bogus"});
     CHECK(c.background);

@@ -125,6 +125,34 @@ void main(uint3 id : SV_DispatchThreadID) {
         c = x;
     }
 
+    // ---------------- Visual style & accessibility -----------------------
+    // Split toning and monochrome work on perceptual values; color vision
+    // correction (daltonization) and the night light filter in linear light.
+    const float mono = gStyle.x, split = gStyle.y, night = gStyle.z;
+    const uint cvd = uint(gStyle.w + 0.5);
+    const bool cvdOn = cvd > 0u && gStyle2.x > 0.0;
+    if (split > 0.0) {
+        float Lp = saturate(lumaRec709(c));
+        c += split * ((1.0 - Lp) * (1.0 - Lp) * float3(-0.025, 0.005, 0.035) + Lp * Lp * float3(0.035, 0.012, -0.03));
+    }
+    if (mono > 0.0) c = lerp(c, lumaRec709(c).xxx, mono);
+    if (night > 0.0 || cvdOn) {
+        float3 lin = hdrInput ? pqDecode(saturate(c)) : srgbToLinear(saturate(c));
+        if (cvdOn) {
+            // Machado et al. 2009 simulation matrices (severity 1.0), linear RGB
+            float3x3 sim = float3x3(0.152286, 1.052583, -0.204868, 0.114503, 0.786281, 0.099216, -0.003882, -0.048116, 1.051998);
+            if (cvd == 2u) sim = float3x3(0.367322, 0.860646, -0.227968, 0.280085, 0.672501, 0.047413, -0.011820, 0.042940, 0.968881);
+            if (cvd == 3u) sim = float3x3(1.255528, -0.076749, -0.178779, -0.078411, 0.930809, 0.147602, 0.004733, 0.691367, 0.303900);
+            float3 err = lin - mul(sim, lin);
+            // Fidaner daltonization: move the information the viewer cannot see
+            // into channels they can distinguish.
+            float3 corr = cvd == 3u ? float3(err.r + 0.7 * err.b, err.g + 0.7 * err.b, 0.0) : float3(0.0, 0.7 * err.r + err.g, 0.7 * err.r + err.b);
+            lin = max(lin + gStyle2.x * corr, 0.0);
+        }
+        if (night > 0.0) lin *= float3(1.0, 1.0 - 0.18 * night, 1.0 - 0.6 * night);
+        c = hdrInput ? pqEncode(lin) : linearToSrgb(lin);
+    }
+
     // ---------------- Output encoding ------------------------------------
     float3 o;
     const float paper = gHdr.x, peak = gHdr.y;

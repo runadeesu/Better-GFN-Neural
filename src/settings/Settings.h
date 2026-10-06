@@ -19,6 +19,9 @@ enum class StreamResolution { Auto, Native, R720p, R1080p, R1440p };
 enum class TriState { Auto, On, Off };
 enum class CaptureBackend { Auto, WindowsGraphicsCapture, DesktopDuplication };
 enum class PerformancePriority { Balanced, Quality, Latency };
+enum class VisualStyle { Natural, Vivid, Cinematic, Competitive, Monochrome };
+enum class ColorVision { Off, Protanopia, Deuteranopia, Tritanopia };
+enum class OsdPosition { TopLeft, TopRight, BottomLeft, BottomRight };
 
 const char* toString(Preset v);
 const char* toString(UpscaleMode v);
@@ -29,6 +32,8 @@ const char* toString(StreamResolution v);
 const char* toString(TriState v);
 const char* toString(CaptureBackend v);
 const char* toString(PerformancePriority v);
+const char* toString(VisualStyle v);
+const char* toString(ColorVision v);
 
 // A tunable enhancement stage. |automatic| lets Auto Mode pick the strength.
 struct Feature {
@@ -77,7 +82,32 @@ struct EnhancementSettings {
     bool colorEnabled = true;
     ColorSettings color;
     HdrSettings hdr;
+    VisualStyle style = VisualStyle::Natural; // look applied on top of the color settings
+    bool adaptiveCleanup = true;              // raise cleanup when the stream quality monitor sees heavy compression
     bool operator==(const EnhancementSettings&) const = default;
+};
+
+// Accessibility filters (global, not per game).
+struct AccessibilitySettings {
+    ColorVision colorVision = ColorVision::Off; // daltonization (color vision deficiency correction)
+    float colorVisionStrength = 1.0f;           // 0..1
+    float nightLight = 0.0f;                    // 0..1 blue light reduction
+    bool operator==(const AccessibilitySettings&) const = default;
+};
+
+// On-screen display drawn into the enhanced picture.
+struct OsdSettings {
+    bool enabled = false;
+    OsdPosition position = OsdPosition::TopRight;
+    int scale = 2; // 1..4 (pixel size of the bitmap font)
+    bool operator==(const OsdSettings&) const = default;
+};
+
+// Laptop battery behaviour.
+struct PowerSettings {
+    bool batterySaver = true;   // limit GPU work while running on battery
+    int batteryMaxTier = 2;     // highest quality tier on battery (0..6)
+    bool operator==(const PowerSettings&) const = default;
 };
 
 struct GameProfile {
@@ -144,7 +174,17 @@ struct Settings {
     LogLevel logLevel = LogLevel::Info;
     std::string language = "auto"; // "auto", "en", "ja", "ja+en" (Japanese with English labels)
 
+    AccessibilitySettings accessibility;
+    OsdSettings osd;
+    PowerSettings power;
+
+    // Screenshots / history
+    std::string screenshotFolder;   // empty = Pictures\Better GFN Neural
+    bool screenshotComparison = true; // also save original and side-by-side images
+    bool recordHistory = true;
+
     std::map<std::string, GameProfile> profiles;
+    std::map<std::string, EnhancementSettings> userPresets; // "My presets" (name -> settings)
     BenchmarkResult benchmark;
 
     // Clamp every numeric value into its valid range. Returns true if anything changed.
@@ -152,6 +192,9 @@ struct Settings {
 };
 
 std::string settingsToJson(const Settings& s);
+// Single enhancement settings block (used for "My presets" export/import).
+std::string enhancementToJson(const EnhancementSettings& e);
+bool enhancementFromJson(const std::string& json, EnhancementSettings& out);
 // Parses JSON into |out|. Missing fields keep their defaults. Returns false on
 // malformed JSON (|error| receives a description); |out| is untouched then.
 bool settingsFromJson(const std::string& json, Settings& out, std::string* error);

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 
 #include <nlohmann/json.hpp>
 
@@ -39,6 +40,19 @@ NLOHMANN_JSON_SERIALIZE_ENUM(CaptureBackend, {{CaptureBackend::Auto, "auto"},
 NLOHMANN_JSON_SERIALIZE_ENUM(PerformancePriority, {{PerformancePriority::Balanced, "balanced"},
                                                    {PerformancePriority::Quality, "quality"},
                                                    {PerformancePriority::Latency, "latency"}})
+NLOHMANN_JSON_SERIALIZE_ENUM(VisualStyle, {{VisualStyle::Natural, "natural"},
+                                           {VisualStyle::Vivid, "vivid"},
+                                           {VisualStyle::Cinematic, "cinematic"},
+                                           {VisualStyle::Competitive, "competitive"},
+                                           {VisualStyle::Monochrome, "monochrome"}})
+NLOHMANN_JSON_SERIALIZE_ENUM(ColorVision, {{ColorVision::Off, "off"},
+                                           {ColorVision::Protanopia, "protanopia"},
+                                           {ColorVision::Deuteranopia, "deuteranopia"},
+                                           {ColorVision::Tritanopia, "tritanopia"}})
+NLOHMANN_JSON_SERIALIZE_ENUM(OsdPosition, {{OsdPosition::TopLeft, "top_left"},
+                                           {OsdPosition::TopRight, "top_right"},
+                                           {OsdPosition::BottomLeft, "bottom_left"},
+                                           {OsdPosition::BottomRight, "bottom_right"}})
 NLOHMANN_JSON_SERIALIZE_ENUM(LogLevel, {{LogLevel::Info, "info"}, {LogLevel::Debug, "debug"}, {LogLevel::Warning, "warning"}, {LogLevel::Error, "error"}})
 
 const char* toString(Preset v) {
@@ -123,6 +137,26 @@ const char* toString(PerformancePriority v) {
     return "?";
 }
 
+const char* toString(VisualStyle v) {
+    switch (v) {
+    case VisualStyle::Natural: return "Natural";
+    case VisualStyle::Vivid: return "Vivid";
+    case VisualStyle::Cinematic: return "Cinematic";
+    case VisualStyle::Competitive: return "Competitive";
+    case VisualStyle::Monochrome: return "Monochrome";
+    }
+    return "?";
+}
+const char* toString(ColorVision v) {
+    switch (v) {
+    case ColorVision::Off: return "Off";
+    case ColorVision::Protanopia: return "Protanopia";
+    case ColorVision::Deuteranopia: return "Deuteranopia";
+    case ColorVision::Tritanopia: return "Tritanopia";
+    }
+    return "?";
+}
+
 // ---------------------------------------------------------------------------
 // JSON mapping (tolerant: every field optional)
 // ---------------------------------------------------------------------------
@@ -136,6 +170,8 @@ static void getOpt(const json& j, const char* key, T& v) {
         // keep default on type mismatch
     }
 }
+
+static bool sanitizeEnhancement(EnhancementSettings& e);
 
 static json toJson(const Feature& f) { return json{{"enabled", f.enabled}, {"auto", f.automatic}, {"strength", f.strength}}; }
 static void fromJson(const json& j, Feature& f) {
@@ -196,7 +232,9 @@ static json toJson(const EnhancementSettings& e) {
                 {"frame_interpolation", e.frameGen},
                 {"color_enabled", e.colorEnabled},
                 {"color", toJson(e.color)},
-                {"hdr", toJson(e.hdr)}};
+                {"hdr", toJson(e.hdr)},
+                {"style", e.style},
+                {"adaptive_cleanup", e.adaptiveCleanup}};
 }
 static void fromJson(const json& j, EnhancementSettings& e) {
     if (!j.is_object()) return;
@@ -214,6 +252,8 @@ static void fromJson(const json& j, EnhancementSettings& e) {
     getOpt(j, "color_enabled", e.colorEnabled);
     if (j.contains("color")) fromJson(j["color"], e.color);
     if (j.contains("hdr")) fromJson(j["hdr"], e.hdr);
+    getOpt(j, "style", e.style);
+    getOpt(j, "adaptive_cleanup", e.adaptiveCleanup);
 }
 
 static json toJson(const GameProfile& p) {
@@ -276,9 +316,27 @@ static void fromJson(const json& j, BenchmarkResult& b) {
     getOpt(j, "backend", b.backend);
 }
 
+std::string enhancementToJson(const EnhancementSettings& e) { return toJson(e).dump(2); }
+
+bool enhancementFromJson(const std::string& text, EnhancementSettings& out) {
+    try {
+        json j = json::parse(text);
+        if (!j.is_object()) return false;
+        EnhancementSettings e;
+        fromJson(j, e);
+        sanitizeEnhancement(e);
+        out = e;
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
 std::string settingsToJson(const Settings& s) {
     json profiles = json::object();
     for (const auto& [key, p] : s.profiles) profiles[key] = toJson(p);
+    json presets = json::object();
+    for (const auto& [name, e] : s.userPresets) presets[name] = toJson(e);
     json j{{"schema_version", s.schemaVersion},
            {"enhancement_enabled", s.enhancementEnabled},
            {"auto_mode", s.autoMode},
@@ -304,7 +362,16 @@ std::string settingsToJson(const Settings& s) {
              {"executable_override", s.gfnExecutableOverride}}},
            {"log_level", s.logLevel},
            {"language", s.language},
+           {"accessibility",
+            {{"color_vision", s.accessibility.colorVision},
+             {"color_vision_strength", s.accessibility.colorVisionStrength},
+             {"night_light", s.accessibility.nightLight}}},
+           {"osd", {{"enabled", s.osd.enabled}, {"position", s.osd.position}, {"scale", s.osd.scale}}},
+           {"power", {{"battery_saver", s.power.batterySaver}, {"battery_max_tier", s.power.batteryMaxTier}}},
+           {"screenshots", {{"folder", s.screenshotFolder}, {"comparison", s.screenshotComparison}}},
+           {"record_history", s.recordHistory},
            {"game_profiles", profiles},
+           {"user_presets", presets},
            {"benchmark", toJson(s.benchmark)}};
     return j.dump(2);
 }
@@ -360,6 +427,36 @@ bool settingsFromJson(const std::string& text, Settings& out, std::string* error
             s.profiles[p.key] = p;
         }
     }
+    if (j.contains("accessibility") && j["accessibility"].is_object()) {
+        const json& a = j["accessibility"];
+        getOpt(a, "color_vision", s.accessibility.colorVision);
+        getOpt(a, "color_vision_strength", s.accessibility.colorVisionStrength);
+        getOpt(a, "night_light", s.accessibility.nightLight);
+    }
+    if (j.contains("osd") && j["osd"].is_object()) {
+        const json& o = j["osd"];
+        getOpt(o, "enabled", s.osd.enabled);
+        getOpt(o, "position", s.osd.position);
+        getOpt(o, "scale", s.osd.scale);
+    }
+    if (j.contains("power") && j["power"].is_object()) {
+        const json& pw = j["power"];
+        getOpt(pw, "battery_saver", s.power.batterySaver);
+        getOpt(pw, "battery_max_tier", s.power.batteryMaxTier);
+    }
+    if (j.contains("screenshots") && j["screenshots"].is_object()) {
+        const json& sc = j["screenshots"];
+        getOpt(sc, "folder", s.screenshotFolder);
+        getOpt(sc, "comparison", s.screenshotComparison);
+    }
+    getOpt(j, "record_history", s.recordHistory);
+    if (j.contains("user_presets") && j["user_presets"].is_object()) {
+        for (auto it = j["user_presets"].begin(); it != j["user_presets"].end(); ++it) {
+            EnhancementSettings e;
+            fromJson(it.value(), e);
+            if (!it.key().empty()) s.userPresets[it.key()] = e;
+        }
+    }
     if (j.contains("benchmark")) fromJson(j["benchmark"], s.benchmark);
     s.sanitize();
     out = std::move(s);
@@ -399,6 +496,19 @@ static bool sanitizeEnhancement(EnhancementSettings& e) {
 bool Settings::sanitize() {
     bool changed = sanitizeEnhancement(enhancement);
     for (auto& [key, p] : profiles) changed |= sanitizeEnhancement(p.enhancement);
+    for (auto& [name, e] : userPresets) changed |= sanitizeEnhancement(e);
+    while (userPresets.size() > 50) {
+        userPresets.erase(std::prev(userPresets.end()));
+        changed = true;
+    }
+    changed |= clampf(accessibility.colorVisionStrength, 0.0f, 1.0f, 1.0f);
+    changed |= clampf(accessibility.nightLight, 0.0f, 1.0f, 0.0f);
+    {
+        int sc = std::clamp(osd.scale, 1, 4), tier = std::clamp(power.batteryMaxTier, 0, 6);
+        changed |= sc != osd.scale || tier != power.batteryMaxTier;
+        osd.scale = sc;
+        power.batteryMaxTier = tier;
+    }
     // drop profiles with empty keys
     for (auto it = profiles.begin(); it != profiles.end();) {
         if (it->first.empty()) {

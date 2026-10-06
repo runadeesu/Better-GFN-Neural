@@ -39,6 +39,10 @@ struct PipelineFrameParams {
     float peakNits = 1000.0f;
     bool compareSplit = false;
     float splitPosition = 0.5f;
+    // Accessibility (global)
+    int colorVision = 0;            // 0 off, 1 protanopia, 2 deuteranopia, 3 tritanopia
+    float colorVisionStrength = 1.0f;
+    float nightLight = 0.0f;
 };
 
 struct PipelineStatus {
