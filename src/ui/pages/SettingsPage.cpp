@@ -130,8 +130,16 @@ bool drawFirstRun(PageContext& c, float t) {
     const UiModel& m = c.model;
     ImGuiViewport* vp = ImGui::GetMainViewport();
     const float sc = ImGui::GetStyle().FontScaleDpi;
-    ImDrawList* dl = ImGui::GetForegroundDrawList();
-    dl->AddRectFilled(vp->Pos, ImVec2(vp->Pos.x + vp->Size.x, vp->Pos.y + vp->Size.y), withAlpha(col::Bg0, 0.92f));
+    // Dim the app behind the wizard with a full-screen window (not the foreground
+    // draw list, which would also cover the wizard). It also swallows clicks.
+    ImGui::SetNextWindowPos(vp->Pos);
+    ImGui::SetNextWindowSize(vp->Size);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, withAlpha(col::Bg0, 0.88f));
+    ImGui::Begin("##firstrun_dim", nullptr,
+                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                     ImGuiWindowFlags_NoNav);
+    ImGui::End();
+    ImGui::PopStyleColor();
     const ImVec2 size(560 * sc, 470 * sc);
     ImGui::SetNextWindowPos(ImVec2(vp->Pos.x + (vp->Size.x - size.x) * 0.5f, vp->Pos.y + (vp->Size.y - size.y) * 0.5f));
     ImGui::SetNextWindowSize(size);
@@ -139,6 +147,7 @@ bool drawFirstRun(PageContext& c, float t) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 18 * sc);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(32 * sc, 28 * sc));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+    ImGui::SetNextWindowFocus(); // always above the dimmer
     ImGui::Begin("##firstrun", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
     textColored(col::Text, tr("Welcome to Better GFN Neural"), kFontTitle, true);
     englishHint(tr("Welcome to Better GFN Neural"), kFontTitle);
