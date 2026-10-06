@@ -557,6 +557,25 @@ TEST_CASE("log_redaction") {
     CHECK(s.find("<user>") != std::string::npos);
 }
 
+TEST_CASE("log_files_not_overwritten_by_quick_restart") {
+    fs::path dir = tempDir("logs");
+    CHECK(Log::init(dir, LogLevel::Info, 10));
+    Log::write(LogLevel::Info, "Test", "first run");
+    CHECK(Log::init(dir, LogLevel::Info, 10)); // same second in practice
+    Log::write(LogLevel::Info, "Test", "second run");
+    Log::shutdown();
+    int files = 0, withFirst = 0;
+    for (const auto& e : fs::directory_iterator(dir)) {
+        if (e.path().extension() != ".log") continue;
+        ++files;
+        std::ifstream in(e.path(), std::ios::binary);
+        std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        if (text.find("first run") != std::string::npos) ++withFirst;
+    }
+    CHECK_EQ(files, 2);
+    CHECK_EQ(withFirst, 1);
+}
+
 TEST_CASE("command_line") {
     auto c = parseCommandLine({"--background", "--data-dir", "D:\\x", "--seconds", "12.5", "--bogus"});
     CHECK(c.background);

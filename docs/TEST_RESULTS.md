@@ -15,7 +15,7 @@ GPU 処理は Direct3D 11 のソフトウェアラスタライザ (WARP) 上で�
 
 | | |
 |---|---|
-| CI run | `build-test-package` run **#4** ([37392766669](https://github.com/runadeesu/Better-GFN-Neural/actions/runs/37392766669)), commit `c6bc45f` |
+| CI run | `build-test-package` run **#5** ([37393385616](https://github.com/runadeesu/Better-GFN-Neural/actions/runs/37393385616)), commit `ef529f2` |
 | Windows job | `windows-latest` (Windows Server 2025), Visual Studio 2026 / MSVC 14.5x, Windows SDK 10.0.26100, Ninja, Release, static CRT |
 | VS 2022 job | `windows-2022`, "Visual Studio 17 2022" generator — compatibility build |
 | Linux job | `ubuntu-latest`, GCC — portable core unit tests + NSR trainer build |
@@ -26,11 +26,11 @@ GPU 処理は Direct3D 11 のソフトウェアラスタライザ (WARP) 上で�
 
 | Stage | Result |
 |---|---|
-| Build — Windows x64 (VS 2026 toolset, Ninja) | ✅ no errors, `/W4` clean apart from third-party code |
+| Build — Windows x64 (VS 2026 toolset, Ninja) | ✅ |
 | Build — Windows x64 (VS 2022 generator) | ✅ |
 | Build — Linux portable core + NSR trainer | ✅ |
 | HLSL shaders (fxc, 36 shaders, `/O3`) | ✅ compiled at build time; all 36 created on the device |
-| Unit tests (`bgn_unit_tests`, 27 test cases) | ✅ 27 / 27 on Windows and Linux |
+| Unit tests (`bgn_unit_tests`) | ✅ 27 / 27 on Windows and Linux (28 after the log-file test added later) |
 | GPU self-test (`--selftest --warp`) | ✅ all checks pass (details below) |
 | Benchmark (`--benchmark --warp`) | ✅ completes, writes recommendation |
 | Integration tests (real exe vs. fake GeForce NOW) | ✅ 20 / 20 checks |
@@ -67,7 +67,7 @@ Synthetic moving scene, interpolated middle frame compared with the true middle 
 | Check | Measurement | Criterion | Result |
 |---|---|---|---|
 | Anti-flicker on a static scene with codec-like block flicker | frame-to-frame change 0.0025 → 0.0013 (**−47 %**) | reduction > 30 % | ✅ PASS |
-| Ghosting during a fast pan (600 px/s = 10 px per frame) | deviation from the current frame 0.0045 vs. frame-to-frame change 0.0235 (19 %) | < 25 % | ✅ PASS |
+| Ghosting during a fast pan (600 px/s) | deviation from the current frame 0.0045 vs. frame-to-frame change 0.0235 (19 %) | < 25 % | ✅ PASS |
 
 ### Pipeline: every quality tier × geometry
 
@@ -78,11 +78,11 @@ real GPU; they only show relative cost).
 
 | Input → output | Upscalers exercised | GPU ms, tiers 0…6 in order (extra HDR pass at tier 4) | Result |
 |---|---|---|---|
-| 320×180 → 640×360 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 35, 29, 31, 36, 33, 35 (HDR), 60, 57 | ✅ PASS |
-| 480×270 → 480×270 | Native (no upscaling) | 23, 33, 37, 38, 38, 38 (HDR), 58, 55 | ✅ PASS |
-| 320×180 → 800×450 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 36, 50, 41, 48, 49, 54 (HDR), 79, 74 | ✅ PASS |
-| 400×225 → 640×360 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 28, 35, 38, 82, 83, 84 (HDR), 119, 117 | ✅ PASS |
-| 640×360 → 640×360 (stream 180p inside) | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 42, 46, 87, 50, 50, 54 (HDR), 75, 75 | ✅ PASS |
+| 320×180 → 640×360 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 59, 49, 56, 63, 57, 56 (HDR), 96, 95 | ✅ PASS |
+| 480×270 → 480×270 | Native (no upscaling) | 40, 50, 55, 58, 60, 57 (HDR), 89, 90 | ✅ PASS |
+| 320×180 → 800×450 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 51, 78, 61, 75, 75, 78 (HDR), 119, 119 | ✅ PASS |
+| 400×225 → 640×360 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 42, 53, 62, 126, 123, 124 (HDR), 185, 190 | ✅ PASS |
+| 640×360 → 640×360 (stream 180p inside) | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 61, 68, 126, 75, 75, 77 (HDR), 118, 114 | ✅ PASS |
 
 ## Benchmark (WARP)
 
@@ -90,15 +90,15 @@ Input 480×270 → output 960×540, 8 measured frames per tier after 2 warm-up f
 
 | Tier | Avg ms | Max ms |
 |---|---|---|
-| 0 Minimal | 62.7 | 117.5 |
-| 1 Light | 54.0 | 54.1 |
-| 2 Performance | 59.9 | 63.7 |
-| 3 Balanced Lite | 61.8 | 62.0 |
-| 4 Balanced | 64.4 | 71.6 |
-| 5 Quality | 113.1 | 120.0 |
-| 6 Ultra | 130.4 | 192.2 |
+| 0 Minimal | 101.4 | 182.7 |
+| 1 Light | 85.2 | 95.8 |
+| 2 Performance | 90.9 | 100.0 |
+| 3 Balanced Lite | 101.3 | 112.6 |
+| 4 Balanced | 105.4 | 128.9 |
+| 5 Quality | 188.4 | 196.6 |
+| 6 Ultra | 223.1 | 317.2 |
 
-Frame interpolation pass: 10.6 ms. Recommendation on WARP: preset **Performance**,
+Frame interpolation pass: 16.3 ms. Recommendation on WARP: preset **Performance**,
 frame interpolation **Off** (expected — a software renderer cannot hold any tier
 inside a 60 fps budget, so the lowest tier is recommended; on real GPUs the same code
 recommends higher tiers).
@@ -116,16 +116,16 @@ fullscreen, windowed, minimize/restore, exit, restart).
 | `report_written` | ✅ PASS | test-results\integration\detect.json |
 | `initial_waiting` | ✅ PASS | first samples: Waiting,Waiting,Waiting,Waiting |
 | `launcher_connected` | ✅ PASS | Connected samples: 28 |
-| `game_detected_cyberpunk` | ✅ PASS | samples: 70 |
-| `game_switch_fortnite` | ✅ PASS | samples: 22 |
+| `game_detected_cyberpunk` | ✅ PASS | samples: 69 |
+| `game_switch_fortnite` | ✅ PASS | samples: 21 |
 | `gfn_exit_waiting` | ✅ PASS | states 42-44.5s: Waiting,Waiting,Waiting,Waiting,Waiting,Waiting,Waiting,Waiting,Waiting |
 | `gfn_restart_reconnect` | ✅ PASS | samples: 35 |
 | `profiles_created` | ✅ PASS | profiles: apexlegends,cyberpunk2077,fortnite |
-| `capture_info` | ✅ PASS | max captured=247 presented=247 backends=Windows Graphics Capture capture sizes=960x540,1028x749,1024x768,1028x720 errors= |
+| `capture_info` | ✅ PASS | max captured=166 presented=166 backends=Windows Graphics Capture capture sizes=960x540,961x541,1028x749,1024x768,1028x720 errors= |
 | `settings_saved` | ✅ PASS | settings.json |
 | `log_written` | ✅ PASS | logs folder |
 | `log_privacy` | ✅ PASS | user name not present in logs |
-| `crash_minidump` | ✅ PASS | dumps: 1 |
+| `crash_minidump` | ✅ PASS | dumps: 2 (expected one per crash) |
 | `safe_mode_after_crashes` | ✅ PASS | safe_mode=True |
 | `normal_after_clean_exit` | ✅ PASS | safe_mode=False |
 | `corrupt_settings_survived` | ✅ PASS | exit code 0 |
@@ -141,7 +141,10 @@ window resizes and fullscreen.
 
 Captured by the integration test (`--automation screenshots`) at 1440×900, 100 % DPI:
 Home, Enhancement, Display, Games, Performance, Benchmark, Settings and the first-run
-wizard. They are part of the `test-results` artifact.
+wizard. They are part of the `test-results` artifact and copied to
+[`docs/images/`](images/).
+
+<img src="images/ui_home.png" width="640" alt="Home">
 
 ## Packages
 

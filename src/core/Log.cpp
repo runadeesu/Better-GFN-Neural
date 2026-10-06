@@ -102,7 +102,12 @@ bool Log::init(const std::filesystem::path& directory, LogLevel minLevel, int ke
         existing.erase(existing.begin());
     }
     if (s.file.is_open()) s.file.close();
-    s.filePath = directory / ("BetterGFNNeural_" + fileStamp() + ".log");
+    // Two launches within the same second (e.g. a crash and the automatic
+    // restart) must not overwrite each other's log.
+    const std::string stamp = fileStamp();
+    s.filePath = directory / ("BetterGFNNeural_" + stamp + ".log");
+    for (int n = 2; std::filesystem::exists(s.filePath, ec) && n < 100; ++n)
+        s.filePath = directory / ("BetterGFNNeural_" + stamp + "_" + std::to_string(n) + ".log");
     s.file.open(s.filePath, std::ios::out | std::ios::trunc | std::ios::binary);
     return s.file.is_open();
 }

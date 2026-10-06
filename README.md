@@ -25,6 +25,18 @@
 
 キーボードショートカットは一切不要です。設定はすべて GUI から変更でき、通常は **Auto（オートモード）** のままで最適な設定が自動選択されます。マウス・キーボード・コントローラー入力はそのまま GeForce NOW に届きます（出力ウィンドウはクリック透過・非アクティブ化）。
 
+<p align="center"><img src="docs/images/ui_home.png" width="720" alt="ホーム画面"></p>
+
+<details><summary>その他の画面（CI の統合テストで自動撮影）</summary>
+
+| | |
+|---|---|
+| <img src="docs/images/ui_enhancement.png" width="420" alt="画質強化"> | <img src="docs/images/ui_performance.png" width="420" alt="パフォーマンス"> |
+| <img src="docs/images/ui_display.png" width="420" alt="ディスプレイ"> | <img src="docs/images/ui_games.png" width="420" alt="ゲームプロファイル"> |
+| <img src="docs/images/ui_benchmark.png" width="420" alt="ベンチマーク"> | <img src="docs/images/ui_first_run.png" width="420" alt="初回セットアップ"> |
+
+</details>
+
 ## 主な機能
 
 | 機能 | 内容 |
