@@ -102,7 +102,7 @@ jobs:
       - name: Package (exe, portable zip, installer)
         if: always()
         shell: pwsh
-        run: ./packaging/package.ps1 -BuildDir build -Version 1.0.0
+        run: ./packaging/package.ps1 -BuildDir build -Version 1.1.0
 
       - name: Upload release artifacts
         if: always()

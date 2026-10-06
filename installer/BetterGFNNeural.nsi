@@ -1,12 +1,12 @@
 ; Better GFN Neural - per-user installer (no administrator rights required)
-; Build: makensis /DVERSION=1.0.0 /DSRCDIR=<staging dir> /DOUTFILE=<path>\BetterGFNNeuralSetup.exe BetterGFNNeural.nsi
+; Build: makensis /DVERSION=1.1.0 /DSRCDIR=<staging dir> /DOUTFILE=<path>\BetterGFNNeuralSetup.exe BetterGFNNeural.nsi
 
 Unicode true
 SetCompressor /SOLID lzma
 RequestExecutionLevel user
 
 !ifndef VERSION
-  !define VERSION "1.0.0"
+  !define VERSION "1.1.0"
 !endif
 !ifndef SRCDIR
   !define SRCDIR "..\dist\stage"

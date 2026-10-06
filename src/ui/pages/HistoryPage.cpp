@@ -18,6 +18,7 @@ static std::string localDate(int64_t unixTime) {
 }
 
 static std::string duration(double seconds) {
+    if (seconds < 59.5) return trf("{} s", std::max(0, int(seconds + 0.5)));
     const int m = int(seconds / 60.0 + 0.5);
     if (m < 60) return trf("{} min", m);
     return trf("{} h {} min", m / 60, m % 60);

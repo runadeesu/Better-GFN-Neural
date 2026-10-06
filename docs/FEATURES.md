@@ -38,8 +38,8 @@ latency, dropped capture frames, input/output resolution (via cost).
 | Tier | Name | Upscaler | Cleanup | Temporal | Deblur | Flow |
 |---|---|---|---|---|---|---|
 | 0 | Minimal | Lanczos-AR | deband | – | – | – |
-| 1 | Light | Lanczos-AR | deband + deblock | – | – | – |
-| 2 | Performance | Lanczos-AR | + denoise, dark-scene | no-flow | adaptive | – |
+| 1 | Light | **NSR-T** | deband + deblock | – | – | – |
+| 2 | Performance | **NSR-T** | + denoise, dark-scene | flow | adaptive | fast |
 | 3 | Balanced Lite | NSR-S | full | flow | + motion | fast |
 | 4 | Balanced | NSR-S | full | flow | + motion | fast |
 | 5 | Quality | NSR-L | high-quality (7×7) | flow | + motion | HQ (8 px cells) |
@@ -52,7 +52,7 @@ Explicit per-feature choices act as upper bounds that Auto Mode may lower.
 
 ## 3. Neural Super Resolution
 
-* CNN ×2 on luma + Catmull-Rom chroma, two trained models (S/L) – [MODEL_CARD](../models/MODEL_CARD.md)
+* CNN ×2 on luma + Catmull-Rom chroma, three trained models (T/S/L; NSR-T is a 336-parameter single-pass model for integrated / low-end GPUs) – [MODEL_CARD](../models/MODEL_CARD.md)
 * Ratios other than 2× → NSR ×2 then Lanczos resample (e.g. 720p→1080p, 1080p→1440p, 1440p→4K)
 * Output resolution: Auto = monitor (aspect-preserving letterbox), or 1080p/1440p/2160p/source
 * **In-place reconstruction**: when GFN itself fills the screen with a lower
@@ -60,7 +60,7 @@ Explicit per-feature choices act as upper bounds that Auto Mode may lower.
   detected from the picture (or set manually) and the frame is reconstructed
   from that resolution with NSR instead of GFN's own simple scaling
 * Modes: Auto (tier), Quality (NSR-L), Balanced (NSR-S), Performance
-  (Lanczos-AR, non-neural), Native (no upscaling)
+  (NSR-T, single pass), Native (no upscaling)
 
 ## 4. Temporal reconstruction (`shaders/temporal.hlsl`)
 
@@ -139,3 +139,21 @@ Capture failure → retry with back-off and fallback to Desktop Duplication;
 device removed → re-created; display change / sleep → re-initialized;
 unhandled exception → cursor restored, minidump, safe mode after two
 consecutive crashes; corrupt settings → backup/defaults.
+
+## 13. Low-spec PCs: realistic AI, low latency, smooth motion (v1.1)
+
+* **NSR-T** (`shaders/nsr_tiny.hlsl`): 4-channel, one-hidden-layer CNN (336
+  parameters) fused into a single dispatch with 16×16 groupshared tiles and a
+  3-pixel halo. It replaces Lanczos-AR at tiers 1–2, so even integrated GPUs get
+  learned edge/texture reconstruction (validation PSNR in
+  [MODEL_CARD](../models/MODEL_CARD.md)).
+* **Motion-compensated temporal from tier 2** (fast optical flow) to avoid the
+  ghosting of the no-flow fallback.
+* **Stutter smoothing** (`shaders/extrap.hlsl`): if the next stream frame is
+  more than 1.6 intervals late, the current output is extrapolated ×0.5 along
+  its flow and shown once. It never holds back a real frame (no added latency);
+  the number of smoothed frames is shown on the Performance page and the OSD.
+* **Battery saver** caps the tier on battery; the stream-quality monitor raises
+  cleanup only when the stream is actually blocky.
+* Recommended for low-spec PCs: preset **Auto** (or **Low Latency**), frame
+  interpolation **Off** or **Auto**, stutter smoothing **On**.

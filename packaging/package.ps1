@@ -5,7 +5,7 @@
 #   dist/SHA256SUMS.txt
 param(
     [Parameter(Mandatory = $true)][string]$BuildDir,
-    [string]$Version = "1.0.0",
+    [string]$Version = "1.1.0",
     [string]$Makensis = ""
 )
 $ErrorActionPreference = "Stop"

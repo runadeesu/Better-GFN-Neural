@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.1.0 — 2026-10-06
+
+Focus: **low-spec PCs** — realistic AI correction with very low latency and
+smooth, natural motion.
+
+### Added — low-spec / latency / smoothness
+- **NSR-T**: a new 336-parameter neural upscaler that runs as one fused compute
+  pass (groupshared tiles), so integrated GPUs (Intel UHD / Iris Xe, AMD Vega /
+  RDNA iGPUs) and older GTX cards get AI reconstruction instead of plain
+  Lanczos. Auto Mode tiers 1–2 and the Performance upscale mode now use it.
+- **Ghost-free temporal at tier 2**: low tiers now use motion-compensated
+  (optical-flow) temporal reconstruction instead of the no-flow fallback, which
+  removes trailing ghosts in motion on weak GPUs.
+- **Stutter smoothing**: when a stream frame arrives late (> 1.6 frame
+  intervals), the last frame is extrapolated half a frame along its motion so
+  the picture keeps moving instead of freezing. Real frames are never delayed,
+  so it adds no latency.
+- GPU tier estimates for integrated graphics tuned so first launch starts at a
+  tier that holds the frame rate.
+
+### Added — features
+- Visual styles (Natural / Vivid / Cinematic / Competitive / Monochrome).
+- Accessibility: color-vision support (protan / deutan / tritan daltonization)
+  and night light (blue-light reduction).
+- Stream quality monitor (blockiness + stutter → 0–100 score) with adaptive
+  compression cleanup.
+- Screenshots of the enhanced picture (optional side-by-side before/after),
+  tray command and `--screenshot-at`.
+- Session history page with per-session summaries and CSV export.
+- In-game OSD (FPS, GPU time, added latency, quality, tier, upscaler) drawn by
+  the present shader, with position and size options.
+- My presets (save / apply / delete enhancement settings), settings export /
+  import, diagnostics report for support.
+- Battery-aware power mode: caps the tier on battery power.
+
 ## 1.0.0 — 2026-10-06
 
 First public release of Better GFN Neural, an unofficial GeForce NOW companion

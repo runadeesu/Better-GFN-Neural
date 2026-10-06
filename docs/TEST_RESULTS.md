@@ -1,4 +1,4 @@
-# テスト結果 / Test results — Better GFN Neural 1.0.0
+# テスト結果 / Test results — Better GFN Neural 1.1.0
 
 **概要 (日本語)**
 CI (GitHub Actions) 上で、ビルド・ユニットテスト・GPU セルフテスト・ベンチマーク・
@@ -15,7 +15,7 @@ GPU 処理は Direct3D 11 のソフトウェアラスタライザ (WARP) 上で�
 
 | | |
 |---|---|
-| CI run | `build-test-package` run **#13** ([37399645118](https://github.com/runadeesu/Better-GFN-Neural/actions/runs/37399645118)), commit `ec78287` (later commits on the branch change documentation only) |
+| CI run | `build-test-package` run **#23** ([37432281486](https://github.com/runadeesu/Better-GFN-Neural/actions/runs/37432281486)), commit `532f5a5` (later commits change documentation, version numbers and a UI label only) |
 | Windows job | `windows-latest` GitHub-hosted runner, Visual Studio 2026 (MSVC 14.51), Windows SDK 10.0.26100, Ninja, Release, static CRT |
 | VS 2022 job | `windows-2022`, "Visual Studio 17 2022" generator — compatibility build |
 | Linux job | `ubuntu-latest`, GCC — portable core unit tests + NSR trainer build |
@@ -29,11 +29,11 @@ GPU 処理は Direct3D 11 のソフトウェアラスタライザ (WARP) 上で�
 | Build — Windows x64 (VS 2026 toolset, Ninja) | ✅ |
 | Build — Windows x64 (VS 2022 generator) | ✅ |
 | Build — Linux portable core + NSR trainer | ✅ |
-| HLSL shaders (fxc, 36 shaders, `/O3`) | ✅ compiled at build time; all 36 created on the device |
-| Unit tests (`bgn_unit_tests`, 31 test cases) | ✅ 31 / 31 on Windows and Linux |
+| HLSL shaders (fxc, 39 shaders, `/O3`) | ✅ compiled at build time; all 39 created on the device |
+| Unit tests (`bgn_unit_tests`, 38 test cases) | ✅ 38 / 38 on Windows and Linux |
 | GPU self-test (`--selftest --warp`) | ✅ all checks pass (details below) |
 | Benchmark (`--benchmark --warp`) | ✅ completes, writes recommendation |
-| Integration tests (real exe vs. fake GeForce NOW) | ✅ 21 / 21 checks |
+| Integration tests (real exe vs. fake GeForce NOW) | ✅ 23 / 23 checks (incl. screenshot + session history) |
 | Packaging | ✅ `BetterGFNNeural.exe`, `BetterGFNNeuralSetup.exe`, portable ZIP, `SHA256SUMS.txt` |
 
 ## GPU self-test (WARP)
@@ -83,6 +83,21 @@ real GPU; they only show relative cost).
 | 320×180 → 800×450 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 55, 80, 62, 76, 75, 78 (HDR), 119, 115 | ✅ PASS |
 | 400×225 → 640×360 | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 45, 53, 57, 123, 121, 124 (HDR), 185, 186 | ✅ PASS |
 | 640×360 → 640×360 (stream 180p inside) | Fast Reconstruct (Lanczos-AR) / Neural SR (L) / Neural SR (S) | 61, 71, 131, 80, 82, 81 (HDR), 115, 119 | ✅ PASS |
+
+### v1.1 checks (low-spec AI, smoothness, styles)
+
+| Check | Result |
+|---|---|
+| NSR-T shader vs. CPU reference | max abs error 0.00122, mean 0.00019 ✅ (NSR-S 0.00152, NSR-L 0.00140) |
+| Tiers 1–2 use NSR-T | ✅ "Neural SR (Tiny)" at tiers 1–2 in every upscaling geometry |
+| Stutter smoothing (moving scene, late frame) | MAE vs. true next frame: extrapolated **0.0045** vs. frozen frame 0.0218 ✅ |
+| Ghosting, tier 2 (motion-compensated) | deviation from current frame 0.0045 (< consecutive-frame delta 0.0235) ✅ |
+| Stream quality detector | blocky image 1.00, smooth image 0.002 ✅ |
+| Color-vision support | output differs from "off": protan 0.033, deutan 0.026, tritan 0.073 ✅ |
+| Night light | blue ×0.64, red ×1.00 ✅ |
+| Monochrome style | max chroma 0.0 ✅ |
+
+WARP timings are CPU-emulated and only show relative structure, not real GPU speed.
 
 ## Benchmark (WARP)
 

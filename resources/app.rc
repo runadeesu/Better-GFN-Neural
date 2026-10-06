@@ -4,8 +4,8 @@
 1 ICON "app.ico"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,0
- PRODUCTVERSION 1,0,0,0
+ FILEVERSION 1,1,0,0
+ PRODUCTVERSION 1,1,0,0
  FILEFLAGSMASK 0x3fL
  FILEFLAGS 0x0L
  FILEOS VOS_NT_WINDOWS32
@@ -18,12 +18,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Better GFN Neural contributors"
             VALUE "FileDescription", "Better GFN Neural - unofficial GeForce NOW companion (local video enhancement)"
-            VALUE "FileVersion", "1.0.0.0"
+            VALUE "FileVersion", "1.1.0.0"
             VALUE "InternalName", "BetterGFNNeural"
             VALUE "LegalCopyright", "Copyright (c) 2026 Better GFN Neural contributors. MIT License."
             VALUE "OriginalFilename", "BetterGFNNeural.exe"
             VALUE "ProductName", "Better GFN Neural"
-            VALUE "ProductVersion", "1.0.0"
+            VALUE "ProductVersion", "1.1.0"
             VALUE "Comments", "Not affiliated with or endorsed by NVIDIA. GeForce NOW is a trademark of NVIDIA Corporation."
         END
     END

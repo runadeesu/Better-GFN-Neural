@@ -175,6 +175,7 @@ const std::unordered_map<std::string_view, const char*>& japanese() {
         {"Input \xE2\x86\x92 output FPS", "入力 \xE2\x86\x92 出力 FPS"},
         {"GPU time", "GPU 時間"},
         {"{} min", "{} 分"},
+        {"{} s", "{} 秒"},
         {"{} h {} min", "{} 時間 {} 分"},
         {"Low-spec AI", "低スペック向け軽量 AI"},
         // My presets / backup / diagnostics
