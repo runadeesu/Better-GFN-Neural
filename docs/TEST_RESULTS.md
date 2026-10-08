@@ -15,7 +15,7 @@ GPU 処理は Direct3D 11 のソフトウェアラスタライザ (WARP) 上で�
 
 | | |
 |---|---|
-| CI run | `build-test-package` run **#23** ([37432281486](https://github.com/runadeesu/Better-GFN-Neural/actions/runs/37432281486)), commit `532f5a5` (later commits change documentation, version numbers and a UI label only) |
+| CI run | `build-test-package` run **#26** ([37436014817](https://github.com/runadeesu/Better-GFN-Neural/actions/runs/37436014817)), commit `5a19e4b` (later commits change documentation and the release workflow only) |
 | Windows job | `windows-latest` GitHub-hosted runner, Visual Studio 2026 (MSVC 14.51), Windows SDK 10.0.26100, Ninja, Release, static CRT |
 | VS 2022 job | `windows-2022`, "Visual Studio 17 2022" generator — compatibility build |
 | Linux job | `ubuntu-latest`, GCC — portable core unit tests + NSR trainer build |
@@ -30,10 +30,10 @@ GPU 処理は Direct3D 11 のソフトウェアラスタライザ (WARP) 上で�
 | Build — Windows x64 (VS 2022 generator) | ✅ |
 | Build — Linux portable core + NSR trainer | ✅ |
 | HLSL shaders (fxc, 39 shaders, `/O3`) | ✅ compiled at build time; all 39 created on the device |
-| Unit tests (`bgn_unit_tests`, 38 test cases) | ✅ 38 / 38 on Windows and Linux |
+| Unit tests (`bgn_unit_tests`, 41 test cases) | ✅ 41 / 41 on Windows and Linux |
 | GPU self-test (`--selftest --warp`) | ✅ all checks pass (details below) |
 | Benchmark (`--benchmark --warp`) | ✅ completes, writes recommendation |
-| Integration tests (real exe vs. fake GeForce NOW) | ✅ 23 / 23 checks (incl. screenshot + session history) |
+| Integration tests (real exe vs. fake GeForce NOW) | ✅ 24 / 24 checks (incl. screenshot, session history, Omakase learned tier) |
 | Packaging | ✅ `BetterGFNNeural.exe`, `BetterGFNNeuralSetup.exe`, portable ZIP, `SHA256SUMS.txt` |
 
 ## GPU self-test (WARP)
@@ -96,6 +96,7 @@ real GPU; they only show relative cost).
 | Color-vision support | output differs from "off": protan 0.033, deutan 0.026, tritan 0.073 ✅ |
 | Night light | blue ×0.64, red ×1.00 ✅ |
 | Monochrome style | max chroma 0.0 ✅ |
+| Omakase learning (integration) | each of the 3 fake games stored a learned tier; the second Cyberpunk session started at it ("start tier 0 (learned)") ✅ |
 
 WARP timings are CPU-emulated and only show relative structure, not real GPU speed.
 

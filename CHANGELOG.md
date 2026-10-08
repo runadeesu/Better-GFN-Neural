@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 — 2026-10-06
+## 1.1.0 — 2026-10-08
 
 Focus: **low-spec PCs** — realistic AI correction with very low latency and
 smooth, natural motion.

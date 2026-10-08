@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Create a draft GitHub Release for this tag (e.g. v1.0.0) after all checks pass. Leave empty for a normal run."
+        description: "Create a draft GitHub Release for this tag (must be v + the version in src/core/Version.h, e.g. v1.1.0) after all checks pass. Leave empty for a normal run."
         required: false
         default: ""
 
@@ -51,6 +51,19 @@ jobs:
       contents: write   # draft release on v* tags only
     steps:
       - uses: actions/checkout@v6
+
+      # Single source of truth for the version: src/core/Version.h
+      - name: Read version
+        shell: pwsh
+        run: |
+          $m = Select-String -Path src/core/Version.h -Pattern 'kVersionString = "([0-9]+\.[0-9]+\.[0-9]+)"'
+          if (-not $m) { throw "version not found in src/core/Version.h" }
+          $v = $m.Matches[0].Groups[1].Value
+          "BGN_VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "version $v"
+          $tag = "${{ inputs.release_tag }}"
+          if (-not $tag -and "${{ github.ref }}".StartsWith("refs/tags/v")) { $tag = "${{ github.ref_name }}" }
+          if ($tag -and $tag -ne "v$v") { throw "release tag $tag does not match the app version v$v (src/core/Version.h)" }
 
       - uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -102,23 +115,36 @@ jobs:
       - name: Package (exe, portable zip, installer)
         if: always()
         shell: pwsh
-        run: ./packaging/package.ps1 -BuildDir build -Version 1.1.0
+        run: ./packaging/package.ps1 -BuildDir build -Version ${{ env.BGN_VERSION }}
 
       - name: Upload release artifacts
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: BetterGFNNeural-1.0.0-windows-x64
+          name: BetterGFNNeural-${{ env.BGN_VERSION }}-windows-x64
           path: |
             dist/BetterGFNNeural.exe
             dist/BetterGFNNeuralSetup.exe
-            dist/BetterGFNNeural-1.0.0-portable.zip
+            dist/BetterGFNNeural-${{ env.BGN_VERSION }}-portable.zip
             dist/SHA256SUMS.txt
 
       # When a version tag (v*) is pushed, or a manual run names one in
       # release_tag: attach the packages to a draft GitHub Release so they do not
       # expire like workflow artifacts. A draft does not create the git tag yet;
       # GitHub creates it on this commit when the release is published.
+      # Release notes: only this version's section of CHANGELOG.md
+      - name: Release notes
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(inputs.release_tag, 'v')
+        shell: pwsh
+        run: |
+          $lines = Get-Content CHANGELOG.md -Encoding utf8
+          $start = ($lines | Select-String -Pattern "^## $([regex]::Escape($env:BGN_VERSION))\b" | Select-Object -First 1).LineNumber
+          if (-not $start) { throw "CHANGELOG.md has no section for $env:BGN_VERSION" }
+          $out = @()
+          for ($i = $start; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^## ') { break }; $out += $lines[$i] }
+          $notes = @("Better GFN Neural $env:BGN_VERSION — unofficial GeForce NOW companion (not affiliated with NVIDIA).", "") + $out + @("", "Verify downloads with SHA256SUMS.txt.")
+          $notes | Set-Content dist/RELEASE_NOTES.md -Encoding utf8
+
       - name: Draft GitHub Release
         if: startsWith(github.ref, 'refs/tags/v') || startsWith(inputs.release_tag, 'v')
         uses: softprops/action-gh-release@v2
@@ -127,11 +153,11 @@ jobs:
           tag_name: ${{ inputs.release_tag || github.ref_name }}
           target_commitish: ${{ github.sha }}
           name: Better GFN Neural ${{ inputs.release_tag || github.ref_name }}
-          body_path: CHANGELOG.md
+          body_path: dist/RELEASE_NOTES.md
           files: |
             dist/BetterGFNNeural.exe
             dist/BetterGFNNeuralSetup.exe
-            dist/BetterGFNNeural-1.0.0-portable.zip
+            dist/BetterGFNNeural-${{ env.BGN_VERSION }}-portable.zip
             dist/SHA256SUMS.txt
 
       - name: Upload test results
