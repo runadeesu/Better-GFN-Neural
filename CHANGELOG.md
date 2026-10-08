@@ -15,8 +15,9 @@ smooth, natural motion.
   ignored until "Adjust manually instead" is chosen.
 - Per-game learning: the quality tier a game settles at on this PC is stored
   in its profile (per GPU) and used as the starting tier next time.
-- Home shows what Omakase decided; manual pages show an "Omakase mode is on"
-  banner with their controls dimmed.
+- Home shows what Omakase decided; the manual settings pages show only an
+  "Omakase mode is on" banner (their controls are hidden until "Adjust
+  manually instead" is chosen).
 
 ### Added — low-spec / latency / smoothness
 - **NSR-T**: a new 336-parameter neural upscaler that runs as one fused compute
